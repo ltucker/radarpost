@@ -3,6 +3,9 @@ from datetime import datetime
 import feedparser
 import re
 
+class InvalidFeedError(Exception): 
+    pass
+
 def parse(content, url):
     """
     produces a python representation of the RSS feed content 

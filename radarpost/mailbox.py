@@ -52,6 +52,9 @@ class Subscription(Document):
     subscription_type = TextField()
     title = TextField()
 
+    # helpful view constants
+    by_type = '_design/mailbox/_view/subscriptions_by_type'
+
 
 class MailboxInfo(Document):
     """
@@ -84,7 +87,8 @@ def iter_mailboxes(couchdb):
     """
     iterate through mailboxes in the current context.
     """
-    for db in couchdb:
+    for db_name in couchdb:
+        db = couchdb[db_name]
         if is_mailbox(db):
             yield db
  
