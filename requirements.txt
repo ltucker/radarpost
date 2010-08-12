@@ -1,0 +1,3 @@
+-e git+git://github.com/ltucker/radarpost.git#egg=radarpost
+-e hg+https://couchdb-python.googlecode.com/hg/#egg=couchdb
+-e git+git://github.com/ltucker/feedparser.git#egg=feedparser

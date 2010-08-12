@@ -1,0 +1,7 @@
+*.pyc
+*~
+*.bak
+*.egg-info
+doc/_templates
+doc/_build
+doc/_static
