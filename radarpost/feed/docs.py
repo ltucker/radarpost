@@ -32,7 +32,5 @@ class FeedSubscription(Subscription):
     subscription_type = TextField(default=FEED_SUBSCRIPTION_TYPE)
 
     url = TextField()
-    status = TextField()
-
     last_ids = ListField(TextField)
-    last_update = DateTimeField()
+

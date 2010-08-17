@@ -51,10 +51,16 @@ class Subscription(Document):
     type = TextField(default=SUBSCRIPTION_TYPE)
     subscription_type = TextField()
     title = TextField()
+    status = TextField()
+    last_update = DateTimeField()
 
     # helpful view constants
     by_type = '_design/mailbox/_view/subscriptions_by_type'
 
+    # status constants
+    STATUS_OK        = 'ok'
+    STATUS_ERROR     = 'error'
+    STATUS_UNCHANGED = 'unchanged'
 
 class MailboxInfo(Document):
     """

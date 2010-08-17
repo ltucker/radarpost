@@ -1,6 +1,7 @@
 from couchdb.http import ResourceConflict
 from datetime import datetime
 from hashlib import md5
+from radarpost.mailbox import Subscription
 from radarpost.feed.docs import BasicNewsItem
 from radarpost.feed.parser import *
 
@@ -57,6 +58,7 @@ def update_feed_subscription(mailbox, subscription, feed,
                              message_filter=None):
     """
     updates a single subscription in a single mailbox.
+    returns - number of new items
 
     mailbox - the mailbox to update
     subscription - the subscription to update
@@ -77,6 +79,7 @@ def update_feed_subscription(mailbox, subscription, feed,
     else: 
         current_ids = subscription.last_ids
 
+    new_messages = 0
     for entry in feed.entries:
         message = message_processor(entry, feed, subscription)
 
@@ -92,6 +95,7 @@ def update_feed_subscription(mailbox, subscription, feed,
             if (message_filter is None or 
                 message_filter(message) == True):
                 message.store(mailbox)
+                new_messages += 1        
         except ResourceConflict:
             # oops, we've already got it. 
             pass
@@ -101,6 +105,7 @@ def update_feed_subscription(mailbox, subscription, feed,
     # if we are the latest updater, put in our info.
     while(subscription.last_update is None or subscription.last_update < now):
         try:
+            subscription.status = Subscription.STATUS_OK
             subscription.last_ids = current_ids
             subscription.last_update = now
             subscription.store(mailbox)
@@ -112,3 +117,4 @@ def update_feed_subscription(mailbox, subscription, feed,
             except ResourceNotFound:
                 # deleted from underneath us, bail out.
                 break
+    return new_messages
