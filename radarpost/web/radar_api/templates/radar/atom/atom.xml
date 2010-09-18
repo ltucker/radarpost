@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+{% load radar_feed %}
+
+<feed xmlns="http://www.w3.org/2005/Atom">
+    {% block feed_info %}
+    <id>{{id}}</id>
+    <title type="text">{{title}}</title>
+    <updated>{{updated|rfc3339 }}</updated>
+    <link rel="self" href="{{self_link}}" />
+    {% endblock %}
+
+    {% block entries %}
+    {% for entry in entries %}
+    {{entry}}
+    {% endfor %}
+    {% endblock %}
+</feed>

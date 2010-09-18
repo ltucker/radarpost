@@ -1,0 +1,27 @@
+{% extends "radar/base_site.html" %}
+
+{% block title %}Create a mailbox{% endblock %}
+
+{% block extra_head %}
+  <script src="{% url static_file 'create_mailbox.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<h1>Create a mailbox</h1>
+<form id="create_form">
+  <div>
+    <label for="mailbox_name">Name</label>
+    <input id="mailbox_name" name="mailbox_name" />
+    <span id="mailbox_name_error"></span>
+    <span class="form_error" id="mailbox_name_error"></span>
+  </div>
+  <div>
+    <label for="mailbox_slug">URL</label>
+    <input id="mailbox_slug" name="mailbox_slug" />
+    <span class="form_error" id="mailbox_slug_error"></span>
+  </div>
+  <div>
+    <input type="button" id="create_mailbox" value="Create">
+  </div>
+</form>
+{% endblock %}

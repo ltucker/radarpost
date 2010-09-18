@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+  {% block page_head %}
+    <title>{% block title %}{% endblock %}</title>
+    {% block json_include %}
+    <script src="{% url static_file 'json2.js' %}"></script>
+    {% endblock %}
+    {% block jquery_include %}
+    <script src="{% url static_file 'jquery-1.4.2.min.js' %}"></script>
+    {% endblock %}
+    {% block extra_head %}{% endblock %}
+  {% endblock %}
+  </head>
+  <body>
+  {% block page_body %}
+    {% block content %}{% endblock %}
+  {% endblock %}
+  </body>
+</html>

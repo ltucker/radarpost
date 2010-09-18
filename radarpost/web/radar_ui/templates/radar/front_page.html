@@ -1,0 +1,9 @@
+{% extends "radar/base_site.html" %}
+
+{% block content %}
+
+<a href="{% url list_mailboxes %}">Directory</a>
+<div>
+  <a href="{% url create_mailbox %}">Create New</a>
+</div>
+{% endblock %}

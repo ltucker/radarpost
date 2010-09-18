@@ -1,12 +1,26 @@
 import copy
 from couchdb.mapping import *
 from couchdb.http import ResourceNotFound, PreconditionFailed
+from radarpost import plugins
+
 
 __all__ = ['Message', 'SourceInfo', 'Subscription', 'MailboxInfo', 
            'MESSAGE_TYPE', 'SUBSCRIPTION_TYPE', 'MAILBOXINFO_TYPE', 
-           'MAILBOXINFO_ID', 'DESIGN_DOC', 'create_mailbox', 'get_mailbox', 
-           'delete_mailbox', 'is_mailbox', 'bless_mailbox']
+           'MAILBOXINFO_ID', 'DESIGN_DOC', 'DESIGN_DOC_PLUGIN', 
+           'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes']
 
+####################################################
+#
+# Plug-in slots
+#
+####################################################
+DESIGN_DOC_PLUGIN = 'mailbox.design_doc'
+"""
+This plugin slot accepts a dictionary representing a design document.
+
+Objects in the slot are added as design documents to all mailboxes 
+that are created.
+"""
 
 #####################################################
 #
@@ -18,6 +32,7 @@ MESSAGE_TYPE = 'message'
 SUBSCRIPTION_TYPE = 'subscription'
 MAILBOXINFO_TYPE = 'mailboxinfo'
 MAILBOXINFO_ID = 'mailbox_meta'
+
 
 class SourceInfo(Mapping):
     """
@@ -69,6 +84,13 @@ class MailboxInfo(Document):
     type = TextField(default=MAILBOXINFO_TYPE)
     version = TextField(default="0.0.1")
     name = TextField()
+    
+    def __init__(self, **values):
+        Document.__init__(self, id=MAILBOXINFO_ID, **values)
+    
+    @classmethod
+    def get(cls, mailbox):
+        return MailboxInfo.load(mailbox, MAILBOXINFO_ID)
 
 
 #####################################################
@@ -89,12 +111,16 @@ def create_mailbox(couchdb, dbname):
     bless_mailbox(db)
     return db
 
-def iter_mailboxes(couchdb): 
+def iter_mailboxes(couchdb, prefix=None): 
     """
     iterate through mailboxes in the current context.
+    if prefix is specified, only databases with names
+    that start with the string specified are returned.
     """
     for db_name in couchdb:
         db = couchdb[db_name]
+        if prefix is not None and not db_name.startswith(prefix):
+            continue
         if is_mailbox(db):
             yield db
  
@@ -102,7 +128,7 @@ def bless_mailbox(db):
     """
     bootstrap a database as a Mailbox
     """
-    info = MailboxInfo(id=MAILBOXINFO_ID)
+    info = MailboxInfo()
     info.store(db)
     update_mailbox(db)
 
@@ -116,11 +142,13 @@ def update_mailbox(db):
     if not is_mailbox(db):
         raise PreconditionFailed("database %s is not a mailbox" % db.name)
 
-    dd = copy.deepcopy(DESIGN_DOC)
-    cur = db.get(dd['_id'])
-    if cur:
-        dd['_rev'] = cur['_rev']
-    db[dd['_id']] = dd
+    for dd in plugins.get(DESIGN_DOC_PLUGIN):
+        dd = copy.deepcopy(dd)
+        cur = db.get(dd['_id'])
+        if cur:
+            dd['_rev'] = cur['_rev']
+        db[dd['_id']] = dd
+
 
 def is_mailbox(db):
     try:
@@ -144,6 +172,7 @@ def is_mailbox(db):
 #
 #####################################################
 
+
 DESIGN_DOC = {
     '_id': '_design/mailbox',
     'views': {
@@ -152,11 +181,11 @@ DESIGN_DOC = {
                 """
                 function(doc) {
                     if (doc.type == 'message') {
-                        emit(doc.timestamp, null);
+                        emit(doc.timestamp, {'_rev': doc._rev});
                     }
                 }
                 """,
-            'reduce': 
+            'reduce':
                 """
                 function(key, values, rereduce) {
                     if (rereduce == true) {
@@ -174,7 +203,7 @@ DESIGN_DOC = {
                 """
                 function(doc) {
                     if (doc.type == 'subscription') {
-                        emit(doc.subscription_type);
+                        emit(doc.subscription_type, {'_rev': doc._rev});
                     }
                 }
                 """
@@ -183,3 +212,4 @@ DESIGN_DOC = {
     'filters': {
     }
 }
+plugins.register(DESIGN_DOC, DESIGN_DOC_PLUGIN)

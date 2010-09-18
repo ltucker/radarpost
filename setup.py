@@ -41,5 +41,7 @@ setup(
     include_package_data=True,
     test_suite='nose.collector',
     entry_points="""
+    [radarpost_plugins]
+    feed = radarpost.feed
     """,
 )

@@ -9,9 +9,7 @@ def test_feed_basic():
     update the subscription
     assert expected items are in the mailbox
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem
-    from radarpost.feed.update import update_feed_subscription
-    from radarpost.feed.parser import parse
+    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
     from radarpost.mailbox import Message
 
 
@@ -57,9 +55,7 @@ def test_feed_update():
     assert expected items are in the mailbox
     assert that old items are not repeated
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem
-    from radarpost.feed.update import update_feed_subscription
-    from radarpost.feed.parser import parse
+    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
     from radarpost.mailbox import Message
 
     # create two versions of a random feed.
@@ -124,9 +120,7 @@ def test_feed_delete_sticks():
     make sure that an item deleted from a mailbox does not 
     reappear if it still exists in the source feed.
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem
-    from radarpost.feed.update import update_feed_subscription
-    from radarpost.feed.parser import parse
+    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
     from radarpost.mailbox import Message
     
     # create two versions of a random feed.
@@ -204,3 +198,23 @@ def test_feed_delete_sticks():
     for iid in seen_ids:
         assert iid in expected_ids
 
+def test_feeds_design_doc():
+    """
+    tests that the feeds design document is 
+    added to mailboxes.
+    """
+    
+    # create a mailbox 
+    mb = create_test_mailbox()
+
+    from radarpost.feed import FeedSubscription    
+    url = 'http://example.com/feed.xml'
+    sub = FeedSubscription(url=url)
+    sub.store(mb)
+    
+    # lookup by url
+    for ss in mb.view(FeedSubscription.by_url, startkey=url, endkey=url):
+        assert ss.id == sub.id
+
+    
+    
