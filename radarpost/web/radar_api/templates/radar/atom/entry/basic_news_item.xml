@@ -1,20 +1,20 @@
 {% load radar_feed %}
 <entry>
     {% block entry_body %}
-    <id>{{message.id}}</id>
+    <id>{{id}}</id>
     <title type="html">
-        <![CDATA[{{message.title}}]]>
+        <![CDATA[{{title}}]]>
     </title>
-    <updated>{{ message.timestamp|rfc3339 }}</updated>
+    <updated>{{ timestamp|rfc3339 }}</updated>
     
-    <link rel="alternate" href="{{message.link}}" />
+    <link rel="alternate" href="{{link}}" />
     
     <author>
-        <name>{{ message.author }}</name>
+        <name>{{ author }}</name>
     </author>
 
     <content type="html">
-        <![CDATA[{{ message.content }}]]>    
+        <![CDATA[{{ content }}]]>    
     </content>
     {% endblock %}
 </entry>

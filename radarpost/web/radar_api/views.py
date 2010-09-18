@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import render_to_response
 from django.template import RequestContext, TemplateDoesNotExist
-from django.template import loader as template_loader
+from django.template import loader as template_loader, Context
 import json
 import re
 from xml.etree import ElementTree as etree
@@ -131,7 +131,7 @@ def atom_feed(request, mailbox_slug):
     except:
         return HttpResponse(status=400)
 
-    params = {'limit': limit}
+    params = {'limit': limit, 'include_docs': True, 'reduce': False}
 
     # starting point in time
     if 'startkey' in request.GET:
@@ -151,12 +151,12 @@ def atom_feed(request, mailbox_slug):
         feed_url = 'https://%s' % feed_url
     else: 
         feed_url = 'http://%s' % feed_url
-    feed_url += urlfor('atom_feed', args=(mb.name,))
+    feed_url += urlfor('atom_feed', args=(mailbox_slug,))
     
     ctx = {'id': feed_url,
            'self_link': feed_url,
            'updated': datetime.utcnow(), # XXX
-           'title': info.name or mb.name,
+           'title': info.name or mailbox_slug,
            'entries': entries,
            }
 
@@ -171,15 +171,17 @@ def _get_atom_renderer(message):
             return r
     return None
 
+
 @plugin(ATOM_RENDERER_PLUGIN)
 def _render_from_type_template(message):
     template = _atom_type_template(message)
     if template is None:
         return None
-
-    def entry():
-        return template.render({'message': message})
-    return entry 
+    
+    def render_entry(outer_context):
+        return template.render(Context(message, 
+                                autoescape=outer_context.autoescape))
+    return render_entry
 
 def _atom_type_template(message, force_type=None):
     """

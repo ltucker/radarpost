@@ -61,6 +61,97 @@ class TestMailboxREST(RadarTestCase):
         response = c.delete(mb_url)
         assert response.status_code == 404
 
+    def test_mailbox_head(self):
+        """
+        tests using head request to check mailbox
+        existence.
+        """
+        slug = TEST_MAILBOX_SLUG
+        mb_url = urlfor('mailbox_rest', args=(slug,))
+        c = Client()
+        response = c.head(mb_url)
+        assert response.status_code == 404
+        mb = create_test_mailbox(slug)
+        response = c.head(mb_url)
+        assert response.status_code == 200
+
+
+class TestAtomFeeds(RadarTestCase):
+    
+    def test_atom_feed_exists(self):
+        from radarpost.feed import parse as parse_feed
+        
+        slug = TEST_MAILBOX_SLUG
+        feed_url = urlfor('atom_feed', args=(slug,))
+        c = Client()
+        response = c.get(feed_url)
+        assert response.status_code == 404
+        mb = create_test_mailbox(slug)
+        response = c.get(feed_url)
+        assert response.status_code == 200
+        
+        # body should parse as a feed
+        ff = parse_feed(response.content, feed_url)
+        assert len(ff.entries) == 0
+        
+    def test_atom_feed_entries_ordered(self):
+        from datetime import datetime, timedelta
+        from radarpost.feed import parse as parse_feed, BasicNewsItem, \
+            FeedSubscription, create_basic_news_item
+        from random import shuffle
+        
+        c = Client()
+        slug = TEST_MAILBOX_SLUG
+        mb = create_test_mailbox(slug)
+        feed_url = urlfor('atom_feed', args=(slug,))
+
+        # there should currently be an empty feed 
+        response = c.get(feed_url)
+        assert response.status_code == 200
+        ff = parse_feed(response.content, feed_url)
+        assert len(ff.entries) == 0
+        
+        # now put some items in the mailbox 
+        # by hand.
+        items = []
+        base_date = datetime(1999, 12, 29, 0)
+        delta = timedelta(seconds=10)
+        for i in range(10):
+            item_id = 'TestItem%d' % i
+            item = BasicNewsItem(
+                fingerprint = item_id,
+                item_id = item_id,
+                timestamp = base_date + i*delta,
+                title = 'Test Item %d' % i,
+                author = 'Joe',
+                link = 'http://www.example.org/%d' % i,
+                content = "Blah Blah %d" % i,
+            )
+            items.append(item)
+        items.reverse() # order from newest to oldest
+    
+        # store them in a random order
+        shuffled = list(items)
+        shuffle(shuffled)
+        for item in shuffled:
+            item.store(mb)
+    
+        import pdb; pdb.set_trace()
+        response = c.get(feed_url)
+        assert response.status_code == 200
+        ff = parse_feed(response.content, feed_url)
+        assert len(ff.entries) == len(items)
+        
+        fake_sub = FeedSubscription(url=feed_url)
+        for i, item in enumerate(items):
+            ent = ff.entries[i]
+            item2 = create_basic_news_item(ent, ff, fake_sub)
+            assert ent.item_id == item.item_id
+            assert ent.timestamp == item.timestamp
+            assert ent.author == item.author
+            assert ent.link == item.link
+            assert ent.content == item.content
+        
 
 class TestOPML(RadarTestCase):
     

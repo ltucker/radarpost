@@ -11,7 +11,7 @@
 
     {% block entries %}
     {% for entry in entries %}
-    {{entry}}
+    {% atom_entry entry %}
     {% endfor %}
     {% endblock %}
 </feed>
