@@ -32,8 +32,13 @@ setup(
     author="Luke Tucker",
     author_email="voxluci@gmail.com",
     url="http://github.com/ltucker/radarpost",
-    install_requires=['couchdb', 
-    'httplib2' 
+    install_requires=[
+        'couchdb', 
+        'httplib2' 
+        # web
+        'WebOb',
+        'Jinja2',
+        'WebTest',
     ],
     dependency_links=[
     ],

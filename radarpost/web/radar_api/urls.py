@@ -1,7 +1,15 @@
-from django.conf.urls.defaults import *
+from routes.route import Route
 
-urlpatterns = patterns('radarpost.web.radar_api.views',
-    url(r'^(?P<mailbox_slug>[a-z0-9_]{1,128})/feeds.opml/?$', 'feeds_opml', name='feeds_opml'),
-    url(r'^(?P<mailbox_slug>[a-z0-9_]{1,128})/atom.xml/?$', 'atom_feed', name='atom_feed'),
-    url(r'^(?P<mailbox_slug>[a-z0-9_]{1,128})/?$', 'mailbox_rest', name="mailbox_rest")
-)
+slug_req = {'mailbox_slug': '[a-z0-9_]{1,128}'}
+api = "radarpost.web.radar_api.controller"
+
+routes = [
+    Route("feeds_opml", "/{mailbox_slug}/feeds.opml",
+          action="feeds_opml", controller=api, requirements=slug_req),
+
+    Route("atom_feed", "/{mailbox_slug}/atom.xml",
+          action="atom_feed", controller=api, requirements=slug_req),
+
+    Route("mailbox_rest", "/{mailbox_slug}",
+          action="mailbox_rest", controller=api, requirements=slug_req),
+]

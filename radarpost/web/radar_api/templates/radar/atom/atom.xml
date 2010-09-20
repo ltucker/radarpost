@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-{% load radar_feed %}
 
 <feed xmlns="http://www.w3.org/2005/Atom">
     {% block feed_info %}
@@ -10,8 +9,10 @@
     {% endblock %}
 
     {% block entries %}
-    {% for entry in entries %}
-    {% atom_entry entry %}
+    {% for render_entry in entries %}
+    {% autoescape false %}
+    {{ render_entry() }}
+    {% endautoescape %}
     {% endfor %}
     {% endblock %}
 </feed>

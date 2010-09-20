@@ -4,7 +4,7 @@ a very loosey-goosey plug-in system
 
 import logging
 
-__all__ = ['plugins', 'register', 'plugin']
+__all__ = ['get', 'register', 'plugin']
 
 log = logging.getLogger(__name__)
 

@@ -1,25 +1,18 @@
-from couchdb import ResourceNotFound, \
-    PreconditionFailed, ResourceConflict
+from couchdb import ResourceConflict
+from couchdb import ResourceNotFound, PreconditionFailed
 from datetime import datetime
-from django.conf import settings
-from django.contrib.sites.models import RequestSite
-from django.core.urlresolvers import reverse as urlfor
-from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse, HttpResponseNotAllowed
-from django.shortcuts import render_to_response
-from django.template import RequestContext, TemplateDoesNotExist
-from django.template import loader as template_loader, Context
 import json
 import re
 from xml.etree import ElementTree as etree
-
-from radarpost.mailbox import create_mailbox as _create_mailbox, Message, MailboxInfo
+from webob import Response as HttpResponse
+from radarpost.mailbox import create_mailbox as _create_mailbox
+from radarpost.mailbox import Message, MailboxInfo
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
-from radarpost.web.helpers import get_couchdb_server, get_database_name, get_mailbox
-
-
+from radarpost.web.helpers import get_couchdb_server, get_database_name
+from radarpost.web.helpers import get_mailbox, get_template, render
+from radarpost.web.helpers import TemplateContext
 
 ###############################################
 #
@@ -34,7 +27,10 @@ def mailbox_rest(request, mailbox_slug):
     elif request.method == 'DELETE': 
         return delete_mailbox(request, mailbox_slug)
     else: 
-        return HttpResponseNotAllowed(['GET', 'HEAD', 'POST', 'DELETE'])
+        # 405 Not Allowed
+        res = HttpResponse(status=405)
+        res.allow = ['GET', 'HEAD', 'POST', 'DELETE']
+        return res
 
 def mailbox_exists(request, mailbox_slug):
     """
@@ -54,10 +50,10 @@ def create_mailbox(request, mailbox_slug):
     """
     try:
         info = None
-        if request.raw_post_data:
+        if request.body:
             try:
                 info = {}
-                raw_info = json.loads(request.raw_post_data)
+                raw_info = json.loads(request.body)
                 title = raw_info.get('title')
                 if title:
                     if VALID_TITLE_PAT.match(title) is None:
@@ -73,7 +69,6 @@ def create_mailbox(request, mailbox_slug):
             for k, v in info.items():
                 setattr(mbinfo, k, v)
             mbinfo.store(mb)
-
 
         return HttpResponse(status=201)
     except PreconditionFailed:
@@ -97,7 +92,7 @@ def delete_mailbox(request, mailbox_slug):
 #
 ###############################################
 
-ATOM_RENDERER_PLUGIN = 'radarpost.api.atom_renderer'
+ATOM_RENDERER_PLUGIN = 'radarpost.web.radar_ui.atom_renderer'
 """
 This slot represents plugins that can render a Message
 into an Atom entry.  
@@ -106,9 +101,15 @@ Most types can be handled by just creating a template called
 radar/atom/entry/<message_type>.xml
 
 Specifically, the slot is filled with callables that accept a Message 
-and produce the text of an atom entry representing the Message or a 
-zero argument callable returning the same.  If the Message
-cannot be handled, None should be returned.
+and a Request, and produce a zero argument callable returning the text
+of an atom entry representing the Message.  If the Message cannot be handled,
+None should be returned. eg: 
+
+@plugin(ATOM_RENDERER_PLUGIN)
+def _render_empty(message, request):
+    def render(): 
+        return "<entry></entry>"
+    return render
 """
 
 DEFAULT_ATOM_ENTRIES = 25
@@ -118,7 +119,9 @@ def atom_feed(request, mailbox_slug):
     renders the mailbox as an atom feed
     """
     if request.method != 'GET':
-        return HttpResponseNotAllowed(['GET'])
+        res = HttpResponse(status=405)
+        res.allow = ['GET']
+        return res
     
     mb = get_mailbox(mailbox_slug)
     if mb is None:
@@ -131,7 +134,10 @@ def atom_feed(request, mailbox_slug):
     except:
         return HttpResponse(status=400)
 
-    params = {'limit': limit, 'include_docs': True, 'reduce': False}
+    params = {'limit': limit, 
+              'include_docs': True,
+              'reduce': False,
+              'descending': True}
 
     # starting point in time
     if 'startkey' in request.GET:
@@ -139,48 +145,45 @@ def atom_feed(request, mailbox_slug):
 
     entries = []
     for message in Message.view(mb, Message.by_timestamp, **params): 
-        renderer = _get_atom_renderer(message)
+        renderer = _get_atom_renderer(message, request)
         if renderer is not None:
             entries.append(renderer)
 
     info = MailboxInfo.get(mb)
     
     # absolute url for requested feed
-    feed_url = RequestSite(request).domain
-    if request.is_secure:
-        feed_url = 'https://%s' % feed_url
-    else: 
-        feed_url = 'http://%s' % feed_url
-    feed_url += urlfor('atom_feed', args=(mailbox_slug,))
-    
-    ctx = {'id': feed_url,
+    feed_url = request.url
+    ctx = TemplateContext(request, 
+          {'id': feed_url,
            'self_link': feed_url,
            'updated': datetime.utcnow(), # XXX
            'title': info.name or mailbox_slug,
            'entries': entries,
-           }
+          })
 
-    return render_to_response('radar/atom/atom.xml',
-                              RequestContext(request, ctx))
+    res = HttpResponse(content_type='application/atom+xml')
+    res.charset = 'utf-8'
+    res.unicode_body = render('radar/atom/atom.xml', ctx)
+    return res
 
 
-def _get_atom_renderer(message):
+def _get_atom_renderer(message, request):
     for renderer in plugins.get(ATOM_RENDERER_PLUGIN):
-        r = renderer(message)
+        r = renderer(message, request)
         if r is not None:
             return r
     return None
 
 
 @plugin(ATOM_RENDERER_PLUGIN)
-def _render_from_type_template(message):
+def _render_from_type_template(message, request):
     template = _atom_type_template(message)
     if template is None:
         return None
     
-    def render_entry(outer_context):
-        return template.render(Context(message, 
-                                autoescape=outer_context.autoescape))
+    def render_entry():
+        return template.render(TemplateContext(request, 
+                               {'message': message}))
     return render_entry
 
 def _atom_type_template(message, force_type=None):
@@ -195,10 +198,7 @@ def _atom_type_template(message, force_type=None):
         mtype = force_type
     
     template_name = 'radar/atom/entry/%s.xml' % mtype
-    try:
-        return template_loader.get_template(template_name)
-    except TemplateDoesNotExist:
-        return None
+    return get_template(template_name)
 
 #################################################
 #
@@ -218,7 +218,7 @@ def feeds_opml(request, mailbox_slug):
     if request.method == 'GET':
         return HttpResponse(_get_opml(mb, request),
                             status=200,
-                            mimetype="application/xml")
+                            content_type="text/x-opml")
 
     elif request.method == 'POST':
         return _post_opml(mb, request)
@@ -227,7 +227,9 @@ def feeds_opml(request, mailbox_slug):
         return _put_opml(mb, request)
 
     else:
-        return HttpResponseNotAllowed(['GET', 'PUT', 'POST'])
+        res = HttpResponse(status=405)
+        res.allow = ['GET', 'PUT', 'POST']
+        return res
 
 
 def _get_opml(mb, request):
@@ -268,7 +270,7 @@ def _post_opml(mb, request):
     feeds in the opml document given.
     """
     try:
-        feeds = _feeds_in_opml(request.raw_post_data)
+        feeds = _feeds_in_opml(request.body)
     except: 
         return HttpResponse(status=400)
     
@@ -294,7 +296,7 @@ def _post_opml(mb, request):
          "deleted": 0,
          "errors": len(errors)
          }
-    return HttpResponse(json.dumps(r), mimetype="application/json")
+    return HttpResponse(json.dumps(r), content_type="application/json")
 
 def _put_opml(mb, request):
     """
@@ -302,7 +304,7 @@ def _put_opml(mb, request):
     those specified in the opml document given.
     """
     try:
-        feeds = _feeds_in_opml(request.raw_post_data)
+        feeds = _feeds_in_opml(request.body)
     except: 
         return HttpResponse(status=400)
 
@@ -342,7 +344,7 @@ def _put_opml(mb, request):
          "deleted": deleted,
          "errors": len(errors)
          }
-    return HttpResponse(json.dumps(r), mimetype="application/json")
+    return HttpResponse(json.dumps(r), content_type="application/json")
 
 def _feeds_in_opml(opml):
     opml = etree.XML(opml)
