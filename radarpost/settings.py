@@ -1,3 +1,3 @@
 
-INSTALLED_APPS = ['radarpost.web.radar_api']
-DEBUG = True
+apps = ['radarpost.web.radar_api']
+debug = True

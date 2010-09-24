@@ -10,9 +10,7 @@ from radarpost.mailbox import Message, MailboxInfo
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
-from radarpost.web.helpers import get_couchdb_server, get_database_name
-from radarpost.web.helpers import get_mailbox, get_template, render
-from radarpost.web.helpers import TemplateContext
+from radarpost.web.context import TemplateContext
 
 ###############################################
 #
@@ -37,7 +35,8 @@ def mailbox_exists(request, mailbox_slug):
     tests existence of a mailbox. 
     returns 200 if the mailbox exists, 404 if not.
     """
-    mb = get_mailbox(mailbox_slug)
+    ctx = request.context 
+    mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
     return HttpResponse()
@@ -62,8 +61,9 @@ def create_mailbox(request, mailbox_slug):
             except:
                 return HttpResponse(status=400)
         
-        dbname = get_database_name(mailbox_slug)
-        mb = _create_mailbox(get_couchdb_server(), dbname)
+        ctx = request.context
+        dbname = ctx.get_database_name(mailbox_slug)
+        mb = _create_mailbox(ctx.get_couchdb_server(), dbname)
         if info is not None and len(info) > 0:
             mbinfo = MailboxInfo.get(mb)
             for k, v in info.items():
@@ -78,9 +78,10 @@ def delete_mailbox(request, mailbox_slug):
     """
     destroys a mailbox.
     """
-    couchdb = get_couchdb_server()
+    ctx = request.context
+    couchdb = ctx.get_couchdb_server()
     try:
-        dbname = get_database_name(mailbox_slug)
+        dbname = ctx.get_database_name(mailbox_slug)
         del couchdb[dbname]
         return HttpResponse()
     except ResourceNotFound:
@@ -123,7 +124,8 @@ def atom_feed(request, mailbox_slug):
         res.allow = ['GET']
         return res
     
-    mb = get_mailbox(mailbox_slug)
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
 
@@ -153,7 +155,7 @@ def atom_feed(request, mailbox_slug):
     
     # absolute url for requested feed
     feed_url = request.url
-    ctx = TemplateContext(request, 
+    template_info = TemplateContext(request, 
           {'id': feed_url,
            'self_link': feed_url,
            'updated': datetime.utcnow(), # XXX
@@ -163,7 +165,7 @@ def atom_feed(request, mailbox_slug):
 
     res = HttpResponse(content_type='application/atom+xml')
     res.charset = 'utf-8'
-    res.unicode_body = render('radar/atom/atom.xml', ctx)
+    res.unicode_body = ctx.render('radar/atom/atom.xml', template_info)
     return res
 
 
@@ -177,7 +179,7 @@ def _get_atom_renderer(message, request):
 
 @plugin(ATOM_RENDERER_PLUGIN)
 def _render_from_type_template(message, request):
-    template = _atom_type_template(message)
+    template = _atom_type_template(message, request)
     if template is None:
         return None
     
@@ -186,7 +188,7 @@ def _render_from_type_template(message, request):
                                {'message': message}))
     return render_entry
 
-def _atom_type_template(message, force_type=None):
+def _atom_type_template(message, request, force_type=None):
     """
     renders an atom entry template
     in radar/atom/entry/ according to the message_type
@@ -198,7 +200,7 @@ def _atom_type_template(message, force_type=None):
         mtype = force_type
     
     template_name = 'radar/atom/entry/%s.xml' % mtype
-    return get_template(template_name)
+    return request.context.get_template(template_name)
 
 #################################################
 #
@@ -211,20 +213,21 @@ def feeds_opml(request, mailbox_slug):
     handles managing feed subscriptions using an OPML 
     document.
     """
-    mb = get_mailbox(mailbox_slug)
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
 
     if request.method == 'GET':
-        return HttpResponse(_get_opml(mb, request),
+        return HttpResponse(_get_opml(request, mb),
                             status=200,
                             content_type="text/x-opml")
 
     elif request.method == 'POST':
-        return _post_opml(mb, request)
+        return _post_opml(request, mb)
 
     elif request.method == 'PUT':
-        return _put_opml(mb, request)
+        return _put_opml(request, mb)
 
     else:
         res = HttpResponse(status=405)
@@ -232,7 +235,7 @@ def feeds_opml(request, mailbox_slug):
         return res
 
 
-def _get_opml(mb, request):
+def _get_opml(request, mb):
     """
     build OPML doc from feed type subscriptions in the
     mailbox.
@@ -264,7 +267,7 @@ def _get_opml(mb, request):
 
     return etree.tostring(root)
 
-def _post_opml(mb, request):
+def _post_opml(request, mb):
     """
     add a FeedSubscription for any new 
     feeds in the opml document given.
@@ -298,7 +301,7 @@ def _post_opml(mb, request):
          }
     return HttpResponse(json.dumps(r), content_type="application/json")
 
-def _put_opml(mb, request):
+def _put_opml(request, mb):
     """
     Replace the set of feed subscriptions with 
     those specified in the opml document given.

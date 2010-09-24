@@ -4,18 +4,45 @@ from routes.util import URLGenerator
 from unittest import TestCase
 from xml.etree import ElementTree as etree
 from radarpost.mailbox import create_mailbox as _create_mailbox, is_mailbox
-from radarpost.web.helpers import build_routes
-from radarpost.web.helpers import get_mailbox, get_database_name
-from radarpost.web.helpers import get_mailbox_slug, get_couchdb_server
+from radarpost.web.context import build_routes, RequestContext
+from radarpost.web.context import get_couchdb_server, get_database_name
+from radarpost.web.context import get_mailbox, get_mailbox_slug
 
 class RadarTestCase(TestCase):
 
+    TEST_MAILBOX_SLUG = '__rp_test_mailbox'
+
+    def setUp(self):
+        # XXX load it!
+        self.config = {'apps': ['radarpost.web.radar_api']}
+        self.url_gen = URLGenerator(build_routes(self.config.get('apps', [])), {})
+
     def tearDown(self):
-        couchdb = get_couchdb_server()
-        dbname = get_database_name(TEST_MAILBOX_SLUG)
+        couchdb = get_couchdb_server(self.config)
+        dbname = get_database_name(self.config, self.TEST_MAILBOX_SLUG)
         if dbname in couchdb:
             del couchdb[dbname]
         
+    def url_for(self, *args, **kw):
+        return self.url_gen(*args, **kw)
+        
+    def get_test_app(self):
+        from radarpost.web.app import make_app
+        from webtest import TestApp
+        return TestApp(make_app(self.config))
+
+    def create_test_mailbox(self, slug=None):
+        if slug is None:
+            slug = self.TEST_MAILBOX_SLUG
+        c = self.get_test_app()
+        mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
+        response = c.head(mb_url, status='*')
+        if response.status_int != 404:
+            response = c.delete(mb_url, status=200)
+        c.post(mb_url, '{}', content_type="application/json", status=201)
+        return get_mailbox(self.config, slug)
+
+
 class TestMailboxREST(RadarTestCase):
 
     def test_mailbox_create(self):
@@ -23,22 +50,22 @@ class TestMailboxREST(RadarTestCase):
         test creating a mailbox
         """
         try:
-            slug = TEST_MAILBOX_SLUG + '_test_mailbox_create'
-            mb_url = url_for('mailbox_rest', mailbox_slug=slug)
-            assert get_mailbox(slug) is None
+            slug = self.TEST_MAILBOX_SLUG + '_test_mailbox_create'
+            mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
+            assert get_mailbox(self.config, slug) is None
             
-            c = get_test_app()
+            c = self.get_test_app()
             c.head(mb_url, status=404)
             c.post(mb_url, '{}', content_type="application/json", status=201)
             c.head(mb_url, status=200)
 
             
-            mb = get_mailbox(slug)
+            mb = get_mailbox(self.config, slug)
             assert mb is not None
             assert is_mailbox(mb)
         finally:
-            dbname = get_database_name(slug)
-            couchdb = get_couchdb_server()
+            dbname = get_database_name(self.config, slug)
+            couchdb = get_couchdb_server(self.config)
             if dbname in couchdb: 
                 del couchdb[dbname]
                 
@@ -46,10 +73,10 @@ class TestMailboxREST(RadarTestCase):
         """
         test deleting a mailbox
         """
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        mb_url = url_for('mailbox_rest', mailbox_slug=slug)
-        c = get_test_app()
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
+        c = self.get_test_app()
         c.head(mb_url, status=200)
         c.delete(mb_url, status=200)
         c.head(mb_url, status=404)
@@ -60,11 +87,11 @@ class TestMailboxREST(RadarTestCase):
         tests using head request to check mailbox
         existence.
         """
-        slug = TEST_MAILBOX_SLUG
-        mb_url = url_for('mailbox_rest', mailbox_slug=slug)
-        c = get_test_app()
+        slug = self.TEST_MAILBOX_SLUG
+        mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
+        c = self.get_test_app()
         c.head(mb_url, status=404)
-        mb = create_test_mailbox(slug)
+        mb = self.create_test_mailbox(slug)
         c.head(mb_url, status=200)
 
 
@@ -73,11 +100,11 @@ class TestAtomFeeds(RadarTestCase):
     def test_atom_feed_exists(self):
         from radarpost.feed import parse as parse_feed
         
-        slug = TEST_MAILBOX_SLUG
-        feed_url = url_for('atom_feed', mailbox_slug=slug)
-        c = get_test_app()
+        slug = self.TEST_MAILBOX_SLUG
+        feed_url = self.url_for('atom_feed', mailbox_slug=slug)
+        c = self.get_test_app()
         c.get(feed_url, status=404)
-        mb = create_test_mailbox(slug)
+        mb = self.create_test_mailbox(slug)
         response = c.get(feed_url, status=200)
         
         # body should parse as a feed
@@ -90,10 +117,10 @@ class TestAtomFeeds(RadarTestCase):
             FeedSubscription, create_basic_news_item
         from random import shuffle
         
-        c = get_test_app()
-        slug = TEST_MAILBOX_SLUG
-        mb = create_test_mailbox(slug)
-        feed_url = url_for('atom_feed', mailbox_slug=slug)
+        c = self.get_test_app()
+        slug = self.TEST_MAILBOX_SLUG
+        mb = self.create_test_mailbox(slug)
+        feed_url = self.url_for('atom_feed', mailbox_slug=slug)
 
         # there should currently be an empty feed 
         response = c.get(feed_url, status=200)
@@ -142,38 +169,38 @@ class TestAtomFeeds(RadarTestCase):
 class TestOPML(RadarTestCase):
     
     def test_opml_empty_get(self):
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
         response = c.get(opml_url, status=200)
         feeds = feeds_in_opml(response.body)
         
         assert len(feeds.keys()) == 0
 
     def test_post_bad_opml(self):
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
         opml = "this ain't opml"
         c.post(opml_url, opml, content_type='text/xml', status=400)
 
     def test_put_bad_opml(self):
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
         opml = "this ain't opml"
         c.put(opml_url, opml, content_type='text/xml', status=400)
 
 
     def test_opml_post(self):
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
         
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
     
         feeds = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -200,11 +227,11 @@ class TestOPML(RadarTestCase):
     def test_opml_post_appends(self):
         from radarpost.feed import FeedSubscription
         
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
         
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
     
         feeds1 = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -245,11 +272,11 @@ class TestOPML(RadarTestCase):
         assert count == 5
 
     def test_opml_put(self):
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
         
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
     
         feeds = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -276,11 +303,11 @@ class TestOPML(RadarTestCase):
     def test_opml_put_overwrites(self):
         from radarpost.feed import FeedSubscription
 
-        mb = create_test_mailbox()
-        slug = get_mailbox_slug(mb.name)
-        c = get_test_app()
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        c = self.get_test_app()
 
-        opml_url = url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
 
         feeds1 = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -316,21 +343,6 @@ class TestOPML(RadarTestCase):
             count += 1
         assert count == 3
 
-def get_test_app():
-    from radarpost.web.app import make_app
-    from webtest import TestApp
-    return TestApp(make_app())
-
-TEST_MAILBOX_SLUG = '__rp_test_mailbox'
-def create_test_mailbox(slug=TEST_MAILBOX_SLUG):
-    c = get_test_app()
-    mb_url = url_for('mailbox_rest', mailbox_slug=slug)
-    response = c.head(mb_url, status='*')
-    if response.status_int != 404:
-        response = c.delete(mb_url, status=200)
-    c.post(mb_url, '{}', content_type="application/json", status=201)
-    return get_mailbox(slug)
-
 
 def feeds_in_opml(opml_data):
     opml = etree.XML(opml_data)
@@ -350,6 +362,3 @@ def make_opml(feeds):
     opml += '</body></opml>'
     return opml
 
-def url_for(*args, **kw):
-    ug = URLGenerator(build_routes(), {})
-    return ug(*args, **kw)
