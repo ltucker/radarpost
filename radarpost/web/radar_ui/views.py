@@ -4,7 +4,7 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from radarpost.mailbox import MAILBOXINFO_ID
 from radarpost.web.helpers import get_mailbox_slug, iter_mailboxes
-from radarpost.web.radar_api.views import mailbox_rest
+from radarpost.web.api.views import mailbox_rest
 
 
 def front_page(request):

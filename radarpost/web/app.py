@@ -33,7 +33,7 @@ class Application(object):
                 
                 # build a request, augment it with a config context
                 request = Request(environ=environ)
-                context = ContextType(request, self.config)
+                context = self.ContextType(request, self.config)
                 request.context = context
                 
                 response = action(request)

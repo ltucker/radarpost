@@ -1,7 +1,7 @@
 from routes.route import Route
 
 slug_req = {'mailbox_slug': '[a-z0-9_]{1,128}'}
-api = "radarpost.web.radar_api.controller"
+api = "radarpost.web.api.controller"
 
 routes = [
     Route("feeds_opml", "/{mailbox_slug}/feeds.opml",
