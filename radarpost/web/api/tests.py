@@ -1,9 +1,384 @@
 import json
 from xml.etree import ElementTree as etree
 from radarpost.mailbox import is_mailbox
+from radarpost.user import User
 from radarpost.web.context import get_couchdb_server, get_database_name
 from radarpost.web.context import get_mailbox, get_mailbox_slug
 from radarpost.web.tests import RadarTestCase
+
+class TestUserAPI(RadarTestCase):
+    
+    def test_create_user_urlenc_post(self):
+        """
+        tests creating a user by POST'ing form-encoded parameters
+        to /user
+        """
+        uname = 'joe'
+        uid = 'org.couchdb.user:%s' % uname
+        udb = self.create_users_database()
+
+        create_url = self.url_for('create_user')
+
+        assert not uid in udb
+        c = self.get_test_app()
+        c.post(create_url, {'username': uname}, status=201)
+        assert uid in udb
+        c.post(create_url, {'username': uname}, status=409)
+        del udb[uid]
+        
+        # test passwords.
+        password = 'bl0w'
+        bad_pass = 'b0w1'
+        # missing password 2
+        c.post(create_url, {'username': uname, 'password': password}, status=400)
+        assert uid not in udb
+        
+        # passwords don't match
+        c.post(create_url, {'username': uname, 
+                            'password': password, 
+                            'password2': bad_pass}, status=400)
+        assert uid not in udb
+        
+        # okay 
+        c.post(create_url, {'username': uname, 
+                            'password': password, 
+                            'password2': password}, status=201)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(password)
+        assert not user.check_password(bad_pass)
+        
+    def test_create_user_json_post(self):
+        """
+        tests creating a user by POST'ing json-encoded parameters
+        to /user
+        """
+        uname = 'joe'
+        uid = 'org.couchdb.user:%s' % uname
+        udb = self.create_users_database()
+
+        create_url = self.url_for('create_user')
+
+        assert not uid in udb
+        c = self.get_test_app()
+        c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=201)
+        assert uid in udb
+        c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=409)
+        del udb[uid]
+
+        # test passwords.
+        password = 'bl0w'
+        bad_pass = 'b0w1'
+        # missing password 2
+        c.post(create_url, json.dumps({'username': uname, 'password': password}), 
+               content_type="application/x-json", status=400)
+        assert uid not in udb
+
+        # passwords don't match
+        c.post(create_url, json.dumps({'username': uname, 
+                            'password': password, 
+                            'password2': bad_pass}), 
+                            content_type="application/x-json", status=400)
+        assert uid not in udb
+
+        # okay 
+        c.post(create_url, json.dumps({'username': uname, 
+                            'password': password, 
+                            'password2': password}), 
+                            content_type="application/x-json", status=201)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(password)
+        assert not user.check_password(bad_pass)
+
+
+    def test_create_user_urlenc_put(self):
+        """
+        tests creating a user by PUT'ing form-encoded parameters
+        to /user/<username>
+        """
+        uname = 'joe'
+        uid = 'org.couchdb.user:%s' % uname
+        udb = self.create_users_database()
+
+        create_url = self.url_for('user_rest', userid=uname)
+
+        assert not uid in udb
+        c = self.get_test_app()
+        c.put(create_url, {}, content_type="application/x-www-form-urlencoded", status=201)
+        assert uid in udb
+        c.put(create_url, {}, content_type="application/x-www-form-urlencoded", status=409)
+        del udb[uid]
+
+        # test passwords.
+        password = 'bl0w'
+        bad_pass = 'b0w1'
+        # missing password 2
+        c.put(create_url, {'password': password}, 
+              content_type="application/x-www-form-urlencoded",
+              status=400)
+        assert uid not in udb
+
+        # passwords don't match
+        c.put(create_url, {'password': password, 
+                            'password2': bad_pass}, 
+                            content_type="application/x-www-form-urlencoded",
+                            status=400)
+        assert uid not in udb
+
+        # okay 
+        c.put(create_url, {'password': password, 
+                           'password2': password}, 
+                           content_type="application/x-www-form-urlencoded",
+                           status=201)
+
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(password)
+        assert not user.check_password(bad_pass)
+
+
+    def test_create_user_json_put(self):
+        """
+        tests creating a user by PUT'ing json-encoded parameters
+        to /user/<username>
+        """
+        uname = 'joe'
+        uid = 'org.couchdb.user:%s' % uname
+        udb = self.create_users_database()
+
+        create_url = self.url_for('user_rest', userid=uname)
+
+        assert not uid in udb
+        c = self.get_test_app()
+        c.put(create_url, json.dumps({}), 
+              content_type="application/x-json", status=201)
+        assert uid in udb
+        c.put(create_url, json.dumps({}),
+              content_type="application/x-json", status=409)
+        del udb[uid]
+
+        # test passwords.
+        password = 'bl0w'
+        bad_pass = 'b0w1'
+        # missing password 2
+        c.put(create_url, json.dumps({'password': password}), 
+              content_type="application/x-json",
+              status=400)
+        assert uid not in udb
+
+        # passwords don't match
+        c.put(create_url, json.dumps({'password': password, 
+                            'password2': bad_pass}), 
+                            content_type="application/x-json",
+                            status=400)
+        assert uid not in udb
+
+        # okay 
+        c.put(create_url, json.dumps({'password': password, 
+                           'password2': password}), 
+                           content_type="application/x-json",
+                           status=201)
+
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(password)
+        assert not user.check_password(bad_pass)
+
+    
+    def test_user_exists(self):
+        uname = 'joe'
+        udb = self.create_users_database()
+        user_url = self.url_for('user_rest', userid=uname)
+
+        c = self.get_test_app()
+        c.head(user_url, status=404)
+
+        user = User(username=uname)
+        user.store(udb)
+
+        c.head(user_url, status=200)    
+    
+    def test_login_urlenc(self):
+        uname = 'joe'
+        password = 'bl0w'
+        badpw = 'lb0w'
+        
+        udb = self.create_users_database()
+        user = User(username=uname, password=password)
+        user.store(udb)
+
+        login_url = self.url_for('login')
+        logout_url = self.url_for('logout')
+        
+        c = self.get_test_app()
+        
+        # not logged in 
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+        # bad login
+        c.post(login_url, {'username': uname, 'password': badpw}, status=401)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+        
+        # successfull login 
+        c.post(login_url, {'username': uname, 'password': password}, status=200)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == 'joe'
+        
+        # logout
+        c.post(logout_url, status=200)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+    def test_login_json(self):
+        uname = 'joe'
+        password = 'bl0w'
+        badpw = 'lb0w'
+
+        udb = self.create_users_database()
+        user = User(username=uname, password=password)
+        user.store(udb)
+
+        login_url = self.url_for('login')
+        logout_url = self.url_for('logout')
+
+        c = self.get_test_app()
+
+        # not logged in 
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+        
+        # bad login 
+        c.post(login_url, json.dumps({'username': uname, 'password': badpw}), 
+               content_type="application/x-json", status=401)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+        # successfull login
+        c.post(login_url, json.dumps({'username': uname, 'password': password}), 
+               content_type="application/x-json", status=200)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == 'joe'
+
+        # logout
+        c.post(logout_url, status=200)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+    def test_delete_user(self):
+        uname = 'joe'
+        udb = self.create_users_database()
+        user_url = self.url_for('user_rest', userid=uname)
+        user = User(username=uname)
+        user.store(udb)
+
+        c = self.get_test_app()
+        c.head(user_url, status=200)
+        c.delete(user_url, status=200)
+        c.head(user_url, status=404)
+        c.delete(user_url, status=404)
+
+    def test_update_user_passwd_post_json(self):
+        uname = 'joe'
+        pw1 = 'bl0w'
+        pw2 = 'b0w1'
+        udb = self.create_users_database()
+        user_url = self.url_for('user_rest', userid=uname)
+        c = self.get_test_app()
+        c.post(user_url, '', status=404)
+    
+        user = User(username=uname, password=pw1)
+        user.store(udb)
+        
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+        # missing password2
+        c.post(user_url, json.dumps({'username': uname, 'password': pw2}), 
+               content_type="application/x-json", status=400)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+        # passwords don't match
+        c.post(user_url, json.dumps({'username': uname, 
+                            'password': pw2, 
+                            'password2': pw1}), 
+                            content_type="application/x-json", status=400)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+
+        # okay 
+        c.post(user_url, json.dumps({'username': uname, 
+                            'password': pw2, 
+                            'password2': pw2}), 
+                            content_type="application/x-json", status=200)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw2)
+        assert not user.check_password(pw1)
+
+
+    def test_update_user_passwd_post_urlenc(self):
+        uname = 'joe'
+        pw1 = 'bl0w'
+        pw2 = 'b0w1'
+        udb = self.create_users_database()
+        user_url = self.url_for('user_rest', userid=uname)
+        c = self.get_test_app()
+        c.post(user_url, {}, status=404)
+
+        user = User(username=uname, password=pw1)
+        user.store(udb)
+
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+        # missing password2
+        c.post(user_url, {'username': uname, 'password': pw2}, 
+                status=400)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+        # passwords don't match
+        c.post(user_url, {'username': uname, 
+                            'password': pw2, 
+                            'password2': pw1}, 
+                             status=400)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw1)
+        assert not user.check_password(pw2)
+
+
+        # okay 
+        c.post(user_url, {'username': uname, 
+                            'password': pw2, 
+                            'password2': pw2}, 
+                             status=200)
+        user = User.get_by_username(udb, uname)
+        assert user.check_password(pw2)
+        assert not user.check_password(pw1)
+
+
+
 
 class TestMailboxREST(RadarTestCase):
 

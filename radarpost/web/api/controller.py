@@ -10,11 +10,189 @@ from radarpost.mailbox import Message, MailboxInfo
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
+from radarpost.user import User
 from radarpost.web.context import TemplateContext
+
+################################################
+#
+# User Login / Logout etc. 
+#
+################################################
+
+def login(request):
+    """
+    handles session login
+    """
+    
+    try:
+        params = _get_params_by_ct(request)
+        username = params['username']
+        password = params['password']
+    except: 
+        return HttpResponse(status=400)
+        
+    # attempt actual login...
+    udb = request.context.get_users_database()
+    user = User.get_by_username(udb, username)
+        
+    if user is None: 
+        return HttpResponse(status=401)
+    
+    if not user.check_password(password):
+        return HttpResponse(status=401)
+        
+    # password was good, record in session
+    request.context.set_session_user(user)
+
+    if 'next' in params:
+        req = HttpResponse(status=304)
+        req.location = params['next']
+        return req
+    else: 
+        return HttpResponse()
+
+def logout(request):
+    """
+    handles session logout
+    """
+    request.context.set_session_user(None)
+    return HttpResponse()
+
+def current_user_info(request):
+    return _user_info(request, request.context.user)
+
+def create_user(request):
+    """
+    handles creating a user with userame 
+    specified as a part of the request parameters
+    """
+    return _create_user(request)
+
+def user_rest(request, userid):
+    """
+    REST dispatch for user methods
+    """
+    if request.method == 'HEAD': 
+        return _user_exists(request, userid)
+    if request.method == 'GET': 
+        return _user_info(request, userid)
+    if request.method == 'POST': 
+        return _update_user(request, userid)
+    if request.method == 'PUT': 
+        return _create_user(request, userid)
+    if request.method == 'DELETE':
+        return _delete_user(request, userid)
+    else: 
+        res = HttpResponse(status=405)
+        res.allow = ['HEAD', 'GET', 'POST', 'GET', 'PUT', 'DELETE']
+
+VALID_USERNAME = re.compile("^[a-zA-Z0-9_]{1,64}$")
+def _create_user(request, username=None):
+    """
+    helper to create users 
+    ie POST /user or PUT /user/<username>
+    """
+    try:
+        params = _get_params_by_ct(request)
+        if username is None:
+            username = params.get('username')
+
+        # validate
+        if not VALID_USERNAME.match(username):
+            return HttpResponse('Invalid username', status=400, content_type="text/plain")
+
+        if 'password' in params: 
+            if (not 'password2' in params or 
+                params['password2'] != params['password']): 
+                return HttpResponse('Passwords did not match', status=400, content_type="text/plain")
+    except:
+        return HttpResponse('Error parsing parameters', status=400, content_type="text/plain")
+
+    try:
+        user = User(username=username)
+        if 'password' in params:
+            user.set_password(params['password'])
+        user.store(request.context.get_users_database())
+        return HttpResponse(status=201)
+    except ResourceConflict:
+        return HttpResponse(status=409)
+
+def _user_info(request, user):
+    """
+    helper that handles retreiving user info
+    ie GET /user/<userid> or GET /user
+    """
+    if isinstance(user, basestring):
+        udb = request.context.get_users_database()
+        user = User.get_by_username(udb, user)
+        if user is None: 
+            return HttpResponse(status=404)
+
+    if user.is_anonymous():
+        info = {'is_anonymous': True}
+    else:
+        info = {'is_anonymous': False,
+                'userid': user.username,
+                'name': user.get_public_id()}
+
+    return HttpResponse(json.dumps(info),
+                        content_type="application/x-json")
+
+def _update_user(request, username):
+    """
+    updates user info 
+    ie POST /user/<username>
+    """
+    udb = request.context.get_users_database()
+    user = User.get_by_username(udb, username)
+    if user is None: 
+        return HttpResponse(status=404)
+
+    try:
+        params = _get_params_by_ct(request)
+
+        if 'password' in params: 
+            if (not 'password2' in params or 
+                params['password2'] != params['password']): 
+                return HttpResponse('Passwords did not match', status=400, content_type="text/plain")
+            user.set_password(params['password'])
+    except: 
+        return HttpResponse(status=400)
+
+    try: 
+        user.store(udb)
+        return HttpResponse(status=200)
+    except ResourceConflict:
+        return HttpResponse(status=409)
+
+
+def _user_exists(request, username):
+    """
+    tests existance of user with the given username
+    ie HEAD /user/<username>
+    """
+    udb = request.context.get_users_database()
+    user = User.get_by_username(udb, username)
+    if user is None or not user.type == 'user':
+        return HttpResponse(status=404)
+    else:
+        return HttpResponse(status=200)
+
+def _delete_user(request, username): 
+    """
+    deletes a user
+    """    
+    udb = request.context.get_users_database()
+    user = User.get_by_username(udb, username)
+    if user is None or not user.type == 'user' or not user.username == username:
+        return HttpResponse(status=404)
+    else:
+        del udb[user.id]
+        return HttpResponse(status=200)
 
 ###############################################
 #
-# REST ops for mailboxes themselves
+# REST ops for mailboxes 
 #
 ###############################################
 def mailbox_rest(request, mailbox_slug):
@@ -359,3 +537,20 @@ def _feeds_in_opml(opml):
             if url is not None:
                 feeds[url] = node.get('title', '')
     return feeds
+    
+###############
+# helpers
+
+def _get_params_by_ct(request):
+    """
+    get the request parameters based on the content type specified in the 
+    request.  supports form encoding and json. returns a dict or None 
+    if there was no recognized parameters.
+    """
+
+    if request.headers['Content-Type'] == 'application/x-www-form-urlencoded': 
+        return request.params
+    elif request.headers['Content-Type'] == 'application/x-json':
+        return json.loads(request.body)
+    else:
+        return None

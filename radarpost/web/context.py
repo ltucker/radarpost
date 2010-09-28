@@ -2,12 +2,18 @@ from couchdb import Server, ResourceNotFound
 from jinja2 import Environment
 from jinja2.loaders import ChoiceLoader, PackageLoader
 import logging
+import mimetypes
+import os
 import routes
+from routes.route import Route
 import sys
 import traceback
+from webob import Response as HttpResponse
+
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.mailbox import iter_mailboxes as _iter_mailboxes
+from radarpost.user import User, AnonymousUser
 
 __all__ = ['RequestContext', 'build_routes',
            'get_couchdb_server', 'get_database_name', 'get_mailbox_slug',
@@ -31,6 +37,7 @@ class RequestContext(object):
         self.request = request
         self.config = config
         self.template_env = _make_template_env(config)
+        self._current_user = None
 
     def url_for(self, *args, **kw):
         return self.request.environ['routes.url'](*args, **kw)
@@ -40,6 +47,63 @@ class RequestContext(object):
 
     def render(self, template_name, *args, **kw):
         return self.get_template(template_name).render(*args, **kw)
+    
+    ###########################################
+    #
+    # Session and Logged in User 
+    #
+    ###########################################
+    @property
+    def session(self):
+        return self.request.environ['beaker.session']
+        
+    USER_SESSION_KEY = 'user_id'
+    @property
+    def user(self):
+        """
+        Property that returns the currently logged in user
+        """
+        if self._current_user is None and self.USER_SESSION_KEY in self.session:
+            try:
+                user_id = self.session[self.USER_SESSION_KEY]
+                udb = self.get_users_database()
+                self._current_user = User.load(udb, user_id)
+            except ResourceNotFound:
+                # non-existant user, wipe this session
+                self.session.invalidate()
+    
+        if self._current_user is None:
+            self._current_user = AnonymousUser()
+            
+        return self._current_user
+    
+    def set_session_user(self, user):
+        """
+        Change the currently logged in user. None may be 
+        specified to clear the current user.  In all 
+        cases, the current session is invalidated.
+        """
+        self.session.invalidate()
+        if user is not None and not user.is_anonymous(): 
+            self.session[self.USER_SESSION_KEY] = user.id
+            self.session.save()
+        self._current_user = user
+        
+
+    ###########################################
+    #
+    # couchdb and database helpers
+    #
+    ###########################################
+    
+    def get_couchdb_server(self):
+        """
+        get a connection to the configured couchdb server. 
+        """
+        return get_couchdb_server(self.config)
+
+    def get_users_database(self):
+        return get_users_database(self.config, couchdb=self.get_couchdb_server())
 
 
     ##########################################
@@ -49,12 +113,7 @@ class RequestContext(object):
     # RequestContext at construction time
     # 
     #########################################
-    
-    def get_couchdb_server(self):
-        """
-        get a connection to the configured couchdb server. 
-        """
-        return get_couchdb_server(self.config)
+
 
     def get_database_name(self, mailbox_slug):
         """
@@ -88,6 +147,15 @@ class RequestContext(object):
 
     def iter_mailboxes(self, couchdb=None):
         return iter_mailboxes(self.config, couchdb=couchdb)
+
+################################
+
+def app_ids(config):
+    """
+    iterate the base app module names that are 
+    specified in the current configuation.
+    """
+    return config.get('apps', [])
 
 #############################
 #
@@ -135,12 +203,17 @@ TEMPLATE_CONTEXT_PROCESSORS = 'radarpost.template_context_processors'
 class TemplateContext(dict):
     def __init__(self, request, ctx):
         self.update(ctx)
+        self.request = request
         for proc in plugins.get(TEMPLATE_CONTEXT_PROCESSORS):
-            proc(request, ctx)
+            proc(request, self)
+
+def render_to_response(template_name, template_context):
+    ctx = template_context.request.context
+    return HttpResponse(ctx.get_template(template_name).render(template_context))
 
 def _make_template_env(config):
     loader = ChoiceLoader([
-        PackageLoader(package) for package in config.get('apps', [])
+        PackageLoader(package) for package in app_ids(config)
     ])
 
     def escape_ml(template_name):
@@ -183,18 +256,17 @@ def expose_url_lookup(request, ctx):
     exposes a reverse url lookup method "url_for" 
     in templates.
     """
-    def lookup_url(*args, **kw):
-        return url_for(request, *args, **kw)
+    ctx['url_for'] = request.context.url_for
 
-    ctx['url_for'] = lookup_url
-    
 #####################################
-# URL Routing
+# URL Routing & Static Files
 #####################################
 
-def build_routes(apps):
-    router = routes.Mapper()
-    for app_module in apps:
+DEFAULT_STATIC_URL_PREFIX = '/static/'
+def build_routes(config):
+    router = routes.Mapper() #controller_scan=None)
+
+    for app_module in app_ids(config):
         # look for routes, fail quietly if the 
         # router is missing.
         try:
@@ -205,16 +277,73 @@ def build_routes(apps):
             except ImportError:
                 continue
             try:
-                app_routes = urls.routes
+                urls.add_routes(router)
             except AttributeError:
                 continue
-            router.extend(app_routes)
         except:
             log.error("Error loading app urls for '%s': %s" % 
                       (app_module, traceback.format_exc()))
             raise
+
+        # introduce a route that allows reverse mapping a static file
+        # url based on the configuration.  In debug mode, we'll serve
+        # the files, but it is expected that in production actual file 
+        # hosting is handled by a separate web server or configured 
+        # as middleware.  In this case, if the route is ever reached, 
+        # the result is 404.
+        #
+        # the main purpose of having this route in either case is to be 
+        # able to call context.url_for('static_file', 'some/file/name.js') and 
+        # return the appropriate url based on the configuration.
+        # 
+        static_url = config.get('static_files_url_prefix', DEFAULT_STATIC_URL_PREFIX)
+        if config.get('debug', False) == False:
+            router.connect('static_file', '%s{path}' % static_url,
+                           action="always_404", controller='radarpost.web.context')
+        else:
+            router.connect('static_file', '%s{path}' % static_url,
+                           action="serve_static_file", controller='radarpost.web.context')
+            
     return router
-    
+
+def static_file_paths(config):
+    static_paths = []
+    for app_module in app_ids(config):
+        try:
+            __import__(app_module)
+            app_base = os.path.dirname(sys.modules[app_module].__file__)
+            static_dir = os.path.join(app_base, 'static')
+            if os.path.isdir(static_dir):
+                static_paths.append(static_dir)
+        except: 
+            pass
+    return static_paths
+
+def always_404(request, *args, **kw):
+    return HttpResponse(status=404)
+
+def serve_static_file(request, path):
+    """
+    this is a crappy static file serving function. 
+    it should not be used in production, only for 
+    development and debugging!
+    """
+    for base_path in static_file_paths(request.context.config):
+        path = os.path.normpath(path)
+        filename = os.path.abspath(os.path.join(base_path, path))
+        if not filename.startswith(base_path):
+            continue
+        if not os.path.isfile(filename): 
+            continue
+
+        # it's there....
+        content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        try:
+            return HttpResponse(open(filename, 'rb').read(), content_type=content_type)
+        except: 
+            continue
+    return HttpResponse(status=404)
+
 ##########################################
 #
 # Mailbox / CouchDB related helpers
@@ -277,3 +406,9 @@ def iter_mailboxes(config, couchdb=None):
     if couchdb is None:
         couchdb = get_couchdb_server(config)
     return _iter_mailboxes(couchdb, prefix=get_mailbox_db_prefix(config))
+
+def get_users_database(config, couchdb = None):
+    if couchdb is None:
+        couchdb = get_couchdb_server(config)
+    user_db = config.get('users_database', '_users')
+    return couchdb[user_db]

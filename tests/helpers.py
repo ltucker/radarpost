@@ -13,6 +13,7 @@ from radarpost.mailbox import create_mailbox as _create_mailbox
 TEST_DATA_DIR = path.join(path.dirname(__file__), 'data')
 TEST_MAILBOX_ID = 'rp_test_mailbox'
 TEST_SERVER = 'http://localhost:5984'
+TEST_USERS_DB = 'rp_test_users'
 
 
 def get_data(filename):
@@ -26,7 +27,14 @@ def create_test_mailbox(name=TEST_MAILBOX_ID, server=TEST_SERVER):
     except PreconditionFailed:        
         del couchdb[name]
         return _create_mailbox(couchdb, name)
-        
+
+def create_test_users_db(name=TEST_USERS_DB, server=TEST_SERVER):
+    try:
+        couchdb = Server(server)
+        return couchdb.create(name)
+    except PreconditionFailed:        
+        del couchdb[name]
+        return couchdb.create(name)
 
 def rfc3339(value):
     if value is None:

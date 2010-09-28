@@ -3,7 +3,7 @@
 {% block title %}Create a mailbox{% endblock %}
 
 {% block extra_head %}
-  <script src="{% url static_file 'create_mailbox.js' %}"></script>
+  <script src="{{ url_for('static_file', path='create_mailbox.js') }}"></script>
 {% endblock %}
 
 {% block content %}

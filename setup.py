@@ -34,11 +34,13 @@ setup(
     url="http://github.com/ltucker/radarpost",
     install_requires=[
         'couchdb', 
-        'httplib2' 
+        'httplib2',
+        'gevent', 
         # web
         'WebOb',
         'Jinja2',
         'WebTest',
+        'Beaker'
     ],
     dependency_links=[
     ],

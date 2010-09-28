@@ -3,16 +3,25 @@
   <head>
   {% block page_head %}
     <title>{% block title %}{% endblock %}</title>
-    {% block json_include %}
-    <script src="{% url static_file 'json2.js' %}"></script>
-    {% endblock %}
-    {% block jquery_include %}
-    <script src="{% url static_file 'jquery-1.4.2.min.js' %}"></script>
+    {% block base_javascripts %}
+    <script src="{{ url_for('static_file', path='json2.js') }}"></script>
+    <script src="{{ url_for('static_file', path='jquery-1.4.2.min.js') }}"></script>
+    <script src="{{ url_for('static_file', path='radar.js')}}"></script>
     {% endblock %}
     {% block extra_head %}{% endblock %}
   {% endblock %}
   </head>
   <body>
+  {% block login %}
+  <div id="login">
+    {% if request.context.user.is_anonymous() %}
+    <a href="{{ url_for('login_page') }}">Login</a>
+    {% else %}
+    Logged in as {{ request.context.user.username }}
+    <a href="{{ url_for('logout_page') }}">Logout</a>
+    {% endif %}
+  </div>
+  {% endblock %}
   {% block page_body %}
     {% block content %}{% endblock %}
   {% endblock %}

@@ -1,0 +1,43 @@
+{% extends "radar/base_site.html" %}
+
+{% block extra_head %}
+<script type="text/javascript">
+$(window).ready(function() {
+    $("#login_form").submit(function(e) {
+        e.preventDefault();
+        $.ajax({
+          type: 'POST',
+          url: '/login',
+          data: $("#login_form").serialize(),
+          dataType: 'json',
+          success: function(data, status, req) {
+              alert("logged in: " + req.status);
+          },
+          error: function(req) {
+              var msg = gettext("An unknown error occurred");
+              if (req.status == 401) {
+                  var msg = gettext("Incorrect username or password");
+              }
+              if (req.status == 400) {
+                  var msg = gettext("Malformed request");
+              }
+              $("#login_form .error").html(msg);
+          }
+        });
+    });
+});
+</script>
+{% endblock %}
+
+
+{% block content %}
+<form id="login_form" method="POST" action="{{ url_for('login') }}">
+    <div class="error"></div>
+    <input type="text" name="username" />
+    <input type="password" name="password" />
+    {% if next %}
+    <input type="hidden" name="next" value="{{next}}" />
+    {% endif %}
+    <input type="submit" value="Login" />
+</form>
+{% endblock %}
