@@ -4,6 +4,16 @@ from hashlib import sha1
 from random import choice
 from string import digits
 
+
+ROLE_ADMIN = 'radar:role:admin'
+PERM_CREATE = 'radar:perm:create'
+PERM_READ   = 'radar:perm:read'
+PERM_UPDATE = 'radar:perm:update'
+PERM_DELETE = 'radar:perm:delete'
+
+PERM_CREATE_MAILBOX = 'radar:perm:create:mailbox'
+
+
 LOCKED_PASSWORD = "*locked*"
 class User(Document):
     """
@@ -68,6 +78,16 @@ class User(Document):
     def is_anonymous(self):
         return False
 
+    def has_role(self, role, obj=None):
+        return role in self.roles
+
+    def has_perm(self, perm, obj=None):
+        if self.has_role(ROLE_ADMIN):
+            return True
+        if perm == PERM_READ:
+            return True
+        return False
+        
 def _password_hash(password, salt):
     hasher = sha1()
     hasher.update(password)
@@ -85,5 +105,17 @@ def _generate_salt():
     return salt
 
 class AnonymousUser(object):
+
+    def __init__(self):
+        self.roles = ['anonymous']
+
     def is_anonymous(self):
         return True
+
+    def has_role(self, role, obj=None):
+        return role in self.roles
+        
+    def has_perm(self, perm, obj=None):
+        if perm == PERM_READ:
+            return True
+        return False

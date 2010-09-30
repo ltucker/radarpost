@@ -1,13 +1,21 @@
-security
+basic auth "login" / alternates
+security (basic)
 create users
+super basic view of news items (UI)
+caching
+subscription management UI
 config loader
 better server startup
-subscription management
-basic view of news items
-sphinx docs
-caching
-running tasks
+basic styling
+basic curation / tagging
+
+=defer=
+running tasks w/o cron
+openid
 pubsubhub
 twitter
-paver / install
 shell
+sphinx docs
+basic filtering
+cleanup tasks
+paver / installation

@@ -2,6 +2,31 @@ from webob import Response as HttpResponse
 from radarpost.mailbox import MailboxInfo
 from radarpost.web.context import TemplateContext, render_to_response
 
+
+######################################
+#
+# view helpers
+#
+######################################
+
+def unauth_handler(request, *args, **kw):
+    return HttpResponse(status=401)
+
+def login_required(controller_action):
+    def wrapped_action(request, *args, **kw):
+        if request.context.user is None or request.context.user.is_anonymous():
+            return unauth_handler(request, *args, **kw)
+        else:
+            return controller_action(*args, **kw)
+    wrapped_action.__name__ = controller_action.__name__
+    return wrapped_action
+
+#####################################
+#
+# views
+#
+######################################
+
 def login(request):
     next_page = request.params.get('next', request.context.url_for('front_page'))
     ctx = {'next': next_page}
@@ -44,3 +69,5 @@ def create_mailbox(request):
 def view_mailbox(request, mailbox_slug):
     return render_to_response('radar/view_mailbox.html', 
                               TemplateContext(request, {}))
+                              
+

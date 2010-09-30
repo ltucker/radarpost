@@ -322,6 +322,7 @@ def static_file_paths(config):
 def always_404(request, *args, **kw):
     return HttpResponse(status=404)
 
+
 def serve_static_file(request, path):
     """
     this is a crappy static file serving function. 
@@ -412,3 +413,4 @@ def get_users_database(config, couchdb = None):
         couchdb = get_couchdb_server(config)
     user_db = config.get('users_database', '_users')
     return couchdb[user_db]
+

@@ -15,12 +15,13 @@ class TestUserAPI(RadarTestCase):
         """
         uname = 'joe'
         uid = 'org.couchdb.user:%s' % uname
-        udb = self.create_users_database()
+        udb = self.get_users_database()
 
         create_url = self.url_for('create_user')
 
         assert not uid in udb
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.post(create_url, {'username': uname}, status=201)
         assert uid in udb
         c.post(create_url, {'username': uname}, status=409)
@@ -54,12 +55,13 @@ class TestUserAPI(RadarTestCase):
         """
         uname = 'joe'
         uid = 'org.couchdb.user:%s' % uname
-        udb = self.create_users_database()
+        udb = self.get_users_database()
 
         create_url = self.url_for('create_user')
 
         assert not uid in udb
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=201)
         assert uid in udb
         c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=409)
@@ -97,12 +99,13 @@ class TestUserAPI(RadarTestCase):
         """
         uname = 'joe'
         uid = 'org.couchdb.user:%s' % uname
-        udb = self.create_users_database()
+        udb = self.get_users_database()
 
         create_url = self.url_for('user_rest', userid=uname)
 
         assert not uid in udb
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.put(create_url, {}, content_type="application/x-www-form-urlencoded", status=201)
         assert uid in udb
         c.put(create_url, {}, content_type="application/x-www-form-urlencoded", status=409)
@@ -142,12 +145,13 @@ class TestUserAPI(RadarTestCase):
         """
         uname = 'joe'
         uid = 'org.couchdb.user:%s' % uname
-        udb = self.create_users_database()
+        udb = self.get_users_database()
 
         create_url = self.url_for('user_rest', userid=uname)
 
         assert not uid in udb
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.put(create_url, json.dumps({}), 
               content_type="application/x-json", status=201)
         assert uid in udb
@@ -184,7 +188,7 @@ class TestUserAPI(RadarTestCase):
     
     def test_user_exists(self):
         uname = 'joe'
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user_url = self.url_for('user_rest', userid=uname)
 
         c = self.get_test_app()
@@ -200,7 +204,7 @@ class TestUserAPI(RadarTestCase):
         password = 'bl0w'
         badpw = 'lb0w'
         
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user = User(username=uname, password=password)
         user.store(udb)
 
@@ -241,7 +245,7 @@ class TestUserAPI(RadarTestCase):
         password = 'bl0w'
         badpw = 'lb0w'
 
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user = User(username=uname, password=password)
         user.store(udb)
 
@@ -281,12 +285,13 @@ class TestUserAPI(RadarTestCase):
 
     def test_delete_user(self):
         uname = 'joe'
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user_url = self.url_for('user_rest', userid=uname)
         user = User(username=uname)
         user.store(udb)
 
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.head(user_url, status=200)
         c.delete(user_url, status=200)
         c.head(user_url, status=404)
@@ -296,9 +301,10 @@ class TestUserAPI(RadarTestCase):
         uname = 'joe'
         pw1 = 'bl0w'
         pw2 = 'b0w1'
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user_url = self.url_for('user_rest', userid=uname)
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.post(user_url, '', status=404)
     
         user = User(username=uname, password=pw1)
@@ -339,9 +345,10 @@ class TestUserAPI(RadarTestCase):
         uname = 'joe'
         pw1 = 'bl0w'
         pw2 = 'b0w1'
-        udb = self.create_users_database()
+        udb = self.get_users_database()
         user_url = self.url_for('user_rest', userid=uname)
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.post(user_url, {}, status=404)
 
         user = User(username=uname, password=pw1)
@@ -392,6 +399,8 @@ class TestMailboxREST(RadarTestCase):
             assert get_mailbox(self.config, slug) is None
             
             c = self.get_test_app()
+            self.login_as_admin(c)
+            
             c.head(mb_url, status=404)
             c.post(mb_url, '{}', content_type="application/json", status=201)
             c.head(mb_url, status=200)
@@ -414,6 +423,7 @@ class TestMailboxREST(RadarTestCase):
         slug = get_mailbox_slug(self.config, mb.name)
         mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
         c = self.get_test_app()
+        self.login_as_admin(c)
         c.head(mb_url, status=200)
         c.delete(mb_url, status=200)
         c.head(mb_url, status=404)

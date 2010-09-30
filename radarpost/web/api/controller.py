@@ -5,12 +5,14 @@ import json
 import re
 from xml.etree import ElementTree as etree
 from webob import Response as HttpResponse
-from radarpost.mailbox import create_mailbox as _create_mailbox
+from radarpost.mailbox import create_mailbox as _create_mailbox, is_mailbox
 from radarpost.mailbox import Message, MailboxInfo
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
-from radarpost.user import User
+from radarpost.user import User, ROLE_ADMIN
+from radarpost.user import PERM_CREATE, PERM_READ, PERM_UPDATE, PERM_DELETE
+from radarpost.user import PERM_CREATE_MAILBOX
 from radarpost.web.context import TemplateContext
 
 ################################################
@@ -85,6 +87,7 @@ def user_rest(request, userid):
     else: 
         res = HttpResponse(status=405)
         res.allow = ['HEAD', 'GET', 'POST', 'GET', 'PUT', 'DELETE']
+        return res
 
 VALID_USERNAME = re.compile("^[a-zA-Z0-9_]{1,64}$")
 def _create_user(request, username=None):
@@ -92,6 +95,9 @@ def _create_user(request, username=None):
     helper to create users 
     ie POST /user or PUT /user/<username>
     """
+    if not request.context.user.has_perm(PERM_CREATE, User): 
+        return HttpResponse(status=401)
+
     try:
         params = _get_params_by_ct(request)
         if username is None:
@@ -148,6 +154,9 @@ def _update_user(request, username):
     if user is None: 
         return HttpResponse(status=404)
 
+    if not request.context.user.has_perm(PERM_UPDATE, obj=user):
+        return HttpResponse(status=401)
+
     try:
         params = _get_params_by_ct(request)
 
@@ -186,9 +195,12 @@ def _delete_user(request, username):
     user = User.get_by_username(udb, username)
     if user is None or not user.type == 'user' or not user.username == username:
         return HttpResponse(status=404)
-    else:
-        del udb[user.id]
-        return HttpResponse(status=200)
+
+    if not request.context.user.has_perm(PERM_DELETE, user):
+        return HttpResponse(status=401)
+
+    del udb[user.id]
+    return HttpResponse(status=200)
 
 ###############################################
 #
@@ -220,11 +232,15 @@ def mailbox_exists(request, mailbox_slug):
     return HttpResponse()
 
 VALID_TITLE_PAT = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_ \+\=\-\?\.\,\'\`\"\!\@\#\$\%\^\&\*\(\)\]\[\<\>\}\{]{0,255}$')
+
 def create_mailbox(request, mailbox_slug):
     """
-    create a mailbox.  request.POST may contain 
+    create a mailbox.  request.POST may contain
     a json object with initial mailbox info.
     """
+    if not request.context.user.has_perm(PERM_CREATE_MAILBOX):
+        return HttpResponse(status=401)
+    
     try:
         info = None
         if request.body:
@@ -260,6 +276,11 @@ def delete_mailbox(request, mailbox_slug):
     couchdb = ctx.get_couchdb_server()
     try:
         dbname = ctx.get_database_name(mailbox_slug)
+        mb = couchdb[dbname]
+        if not is_mailbox(mb):
+            return HttpResponse(status=404)
+        if not ctx.user.has_perm(PERM_DELETE, mb):
+            return HttpResponse(status=401)
         del couchdb[dbname]
         return HttpResponse()
     except ResourceNotFound:
@@ -293,19 +314,17 @@ def _render_empty(message, request):
 
 DEFAULT_ATOM_ENTRIES = 25
 MAX_ATOM_ENTRIES = 100
-def atom_feed(request, mailbox_slug):
+def atom_feed_latest(request, mailbox_slug):
     """
     renders the mailbox as an atom feed
     """
-    if request.method != 'GET':
-        res = HttpResponse(status=405)
-        res.allow = ['GET']
-        return res
-    
     ctx = request.context
     mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
+
+    if not ctx.user.has_perm(PERM_READ, mb):
+        return HttpResponse(status=401)
 
     # number of entries
     try:
@@ -323,8 +342,12 @@ def atom_feed(request, mailbox_slug):
     if 'startkey' in request.GET:
         params['startkey'] = request.GET['startkey']
 
+    latest_messages = Message.view(mb, Message.by_timestamp, **params) 
+    return _render_atom_feed(request, mb, latest_messages)
+
+def _render_atom_feed(request, mb, messages):    
     entries = []
-    for message in Message.view(mb, Message.by_timestamp, **params): 
+    for message in messages:
         renderer = _get_atom_renderer(message, request)
         if renderer is not None:
             entries.append(renderer)
@@ -333,17 +356,17 @@ def atom_feed(request, mailbox_slug):
     
     # absolute url for requested feed
     feed_url = request.url
-    template_info = TemplateContext(request, 
+    template_info = TemplateContext(request,
           {'id': feed_url,
            'self_link': feed_url,
            'updated': datetime.utcnow(), # XXX
-           'title': info.name or mailbox_slug,
+           'title': info.name or request.context.get_mailbox_slug(mb.name),
            'entries': entries,
           })
 
     res = HttpResponse(content_type='application/atom+xml')
     res.charset = 'utf-8'
-    res.unicode_body = ctx.render('radar/atom/atom.xml', template_info)
+    res.unicode_body = request.context.render('radar/atom/atom.xml', template_info)
     return res
 
 

@@ -17,8 +17,8 @@ def add_routes(mapper):
     mapper.connect("current_user_info", "/user",
                    action="current_user_info", controller=api,
                    conditions={'method': ['GET', 'HEAD']})
-                   
-    mapper.connect("create_user", "/user", 
+
+    mapper.connect("create_user", "/user",
                    action="create_user", controller=api,
                    conditions={'method': ['POST']})
 
@@ -35,7 +35,7 @@ def add_routes(mapper):
                    conditions={'method': ['GET', 'PUT', 'POST', 'HEAD']})
 
     mapper.connect("atom_feed", "/{mailbox_slug}/atom.xml",
-                   action="atom_feed", controller=api,
+                   action="atom_feed_latest", controller=api,
                    requirements=slug_req,
                    conditions={'method': ['GET', 'HEAD']})
 
