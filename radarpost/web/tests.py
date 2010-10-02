@@ -19,16 +19,20 @@ class RadarTestCase(TestCase):
 
     def setUp(self):
         # XXX load it!
-        self.config = {'apps': ['radarpost.web.api'], 
-                       'debug': True, 
-                       'session.type': 'memory', 
-                       'users_database': self.TEST_USERS_DB}
+        self.config = {'web.apps': ['radarpost.web.api'], 
+                       'web.debug': True,
+                       'web.static_files_url': '/static',
+                       'beaker.session.type': 'memory', 
+                       'couchdb.users_database': self.TEST_USERS_DB,
+                       'couchdb.address': 'http://localhost:5984',
+                       'couchdb.prefix': 'radar/'
+                       }
 
         self.url_gen = URLGenerator(build_routes(self.config), {})
 
         # set-up users database
         couchdb = get_couchdb_server(self.config)
-        dbname = self.config['users_database']
+        dbname = self.config['couchdb.users_database']
         if dbname in couchdb: 
             del couchdb[dbname]
         self._users_db = couchdb.create(dbname)

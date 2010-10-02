@@ -7,6 +7,9 @@ import traceback
 from webob import Request, Response
 
 
+from radarpost.config import CONFIG_INI_PARSER_PLUGIN, parse_bool
+from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand
+from radarpost import plugins
 from radarpost.web.context import RequestContext, build_routes
 
 
@@ -23,8 +26,8 @@ def make_app(config, ContextType=RequestContext):
 
     beaker_options = {}
     for k in config.keys():
-        if k.startswith('session.'): 
-            beaker_options[k] = config[k]
+        if k.startswith('beaker.session.'): 
+            beaker_options[k[len('beaker.'):]] = config[k]
     if len(beaker_options) > 0:
         app = SessionMiddleware(app, beaker_options)
     return app
@@ -76,3 +79,39 @@ def _get_action(match):
         return act
     except KeyError:
         return None
+
+@plugins.plugin(CONFIG_INI_PARSER_PLUGIN)
+def parse_web_config(config):
+    if 'web.apps' in config: 
+        config['web.apps'] = [x.strip() for x in config['web.apps'].split(',')]
+    if 'web.debug' in config:
+        config['web.debug'] = parse_bool(config['web.debug'])
+
+DEFAULT_RADAR_PORT = 9332
+class StartDevWebServer(BasicCommand):
+    command_name = "serve"
+    description = "start development web server"
+
+    def setup_options(self, parser):
+        parser.set_usage(r"%prog" + " %s <command> [port] [options]" % self.command_name)
+
+    def __call__(self, config, options, args):
+        if len(args) > 2: 
+            self.print_usage()
+            return 1
+        elif len(args) == 2:
+            try:
+                port = int(args[1])
+            except: 
+                print 'Unable to parse port "%s"' % args[1]
+                self.print_usage()
+                return 1
+        else: 
+            port = DEFAULT_RADAR_PORT
+            
+        from gevent.wsgi import WSGIServer
+        app = make_app(config) 
+        server = WSGIServer(('', port), app)
+        print "* serving on port %d" % port
+        server.serve_forever()
+plugins.register(StartDevWebServer(), COMMANDLINE_PLUGIN)

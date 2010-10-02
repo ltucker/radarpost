@@ -155,7 +155,7 @@ def app_ids(config):
     iterate the base app module names that are 
     specified in the current configuation.
     """
-    return config.get('apps', [])
+    return config['web.apps']
 
 #############################
 #
@@ -262,7 +262,6 @@ def expose_url_lookup(request, ctx):
 # URL Routing & Static Files
 #####################################
 
-DEFAULT_STATIC_URL_PREFIX = '/static/'
 def build_routes(config):
     router = routes.Mapper() #controller_scan=None)
 
@@ -296,8 +295,8 @@ def build_routes(config):
         # able to call context.url_for('static_file', 'some/file/name.js') and 
         # return the appropriate url based on the configuration.
         # 
-        static_url = config.get('static_files_url_prefix', DEFAULT_STATIC_URL_PREFIX)
-        if config.get('debug', False) == False:
+        static_url = config['web.static_files_url']
+        if config['web.debug'] == False:
             router.connect('static_file', '%s{path}' % static_url,
                            action="always_404", controller='radarpost.web.context')
         else:
@@ -355,10 +354,7 @@ def get_couchdb_server(config):
     """
     get a connection to the configured couchdb server. 
     """
-    if 'couchdb' in config: 
-        return Server(config['couchdb'])
-    else:
-        return Server()
+    return Server(config['couchdb.address'])
 
 def get_database_name(config, mailbox_slug):
     """
@@ -391,17 +387,14 @@ def get_mailbox(config, mailbox_slug, couchdb=None):
     except ResourceNotFound:
         return None
 
-DEFAULT_COUCHDB_PREFIX = 'radar/'
+
 def get_mailbox_db_prefix(config):
     """
     gets the configured name prefix for all couchdb databases 
     representing mailboxes.
     """
-    if 'couchdb_prefix' in config:
-        prefix = config['couchdb_prefix']
-    else:
-        prefix = DEFAULT_COUCHDB_PREFIX
-    return prefix
+    return config['couchdb.prefix']
+
 
 def iter_mailboxes(config, couchdb=None):
     if couchdb is None:
@@ -411,6 +404,6 @@ def iter_mailboxes(config, couchdb=None):
 def get_users_database(config, couchdb = None):
     if couchdb is None:
         couchdb = get_couchdb_server(config)
-    user_db = config.get('users_database', '_users')
+    user_db = config['couchdb.users_database']
     return couchdb[user_db]
 

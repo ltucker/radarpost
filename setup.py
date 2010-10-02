@@ -48,7 +48,13 @@ setup(
     include_package_data=True,
     test_suite='nose.collector',
     entry_points="""
+    [console_scripts]
+    radarpost = radarpost.main:main
+    
     [radarpost_plugins]
     feed = radarpost.feed
+    commands = radarpost.cli
+    server = radarpost.web.app
+    agents = radarpost.agent
     """,
 )

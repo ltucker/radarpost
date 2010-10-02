@@ -1,11 +1,7 @@
-from couchdb import Server, ResourceConflict
-from datetime import datetime
-import logging
-import traceback
-from radarpost.mailbox import *
-from radarpost.feed import *
-
-log = logging.getLogger(__name__)
+from couchdb import Server, ResourceConflict, ResourceNotFound
+from radarpost.feed import FEED_SUBSCRIPTION_TYPE, update_feed_subscription
+from radarpost import plugins
+from radarpost.agent.plugins import SUBSCRIPTION_UPDATE_HANDLER
 
 def poll_feed(mb, sub, http):
     """
@@ -73,40 +69,14 @@ def _try_poll_feed(mb, sub, http, force):
         log.error("mailbox %s <= feed %s: unexpected error: %s" % (mb.name, sub.url, traceback.format_exc()))
         return False, Subscription.ERROR, 0
 
-def main(argv):
-    from httplib2 import Http
-    from optparse import OptionParser 
-
-    logging.basicConfig(level=logging.INFO)
-
-    parser = OptionParser()
-    parser.add_option('--couchdb', 
-                      dest='couchdb',
-                      default='http://localhost:5984',
-                      help='address of couchdb')
-    parser.add_option('--cache',
-                      dest='http_cache',
-                      default=None,
-                      help='directory to use for caching')
-
-    options, args = parser.parse_args(argv)
-
-    couchdb = Server(options.couchdb)
-    http = Http(options.http_cache)
+@plugins.plugin(SUBSCRIPTION_UPDATE_HANDLER)
+def poll_feed_sub(mb, sub, config):
+    if sub.subscription_type != FEED_SUBSCRIPTION_TYPE:
+        return False
+    
+    # sweet, go ahead...
+    http = Http(config.get('http_cache', None))
     http.timeout = 15 
     http.force_exception_to_status_code = True
-
-    for mb in iter_mailboxes(couchdb):
-        log.info("Updating %s" % mb.name)
-        feed_count = 0
-        for sub in FeedSubscription.view(mb, Subscription.by_type,
-                                          startkey=FEED_SUBSCRIPTION_TYPE,
-                                          endkey=FEED_SUBSCRIPTION_TYPE,
-                                          include_docs=True):
-            poll_feed(mb, sub, http)
-            feed_count += 1
-        log.info("Finished %s - %d updated" % (mb.name, feed_count))
-
-if __name__ == '__main__':
-    import sys
-    main(sys.argv)
+    poll_feed(mb, sub, http)
+    return True

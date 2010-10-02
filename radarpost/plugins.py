@@ -45,4 +45,5 @@ def _search():
             entry.load(require=True)
         except:
             import traceback
+            traceback.print_exc()
             log.error("Error loading plugin %s from %s: %s" % (entry.name, entry.dist.location, traceback.format_exc()))

@@ -11,7 +11,13 @@ $(window).ready(function() {
           data: $("#login_form").serialize(),
           dataType: 'json',
           success: function(data, status, req) {
-              alert("logged in: " + req.status);
+              var next_location = req.getResponseHeader('Location');
+              if (next_location) {
+                  window.location = next_location; 
+              }
+              else {
+                  window.location.reload();
+              }
           },
           error: function(req) {
               var msg = gettext("An unknown error occurred");

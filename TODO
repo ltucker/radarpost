@@ -1,17 +1,21 @@
-basic auth "login" / alternates
-security (basic)
-create users
-super basic view of news items (UI)
-caching
+import loops from plugin loading
+config loader / commands w config / better server startup
+create users command
+create users UI
+basic auth "login"
+super basic view of news items UI
 subscription management UI
-config loader
-better server startup
+caching
 basic styling
 basic curation / tagging
 
 =defer=
-running tasks w/o cron
+server reload on file change
+plugin ordering and overriding
+split out users app
+auth a la django auth backends
 openid
+running tasks w/o cron
 pubsubhub
 twitter
 shell
@@ -19,3 +23,4 @@ sphinx docs
 basic filtering
 cleanup tasks
 paver / installation
+split framework

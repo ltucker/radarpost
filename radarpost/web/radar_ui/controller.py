@@ -34,6 +34,7 @@ def login(request):
                               TemplateContext(request, ctx))
 
 def logout(request):
+    request.context.set_session_user(None)
     return render_to_response('radar/logout.html', TemplateContext(request, {}))
 
 def signup(request):
