@@ -1,3 +1,4 @@
+import copy
 from couchdb import ResourceConflict
 from couchdb import ResourceNotFound, PreconditionFailed
 from datetime import datetime
@@ -6,7 +7,7 @@ import re
 from xml.etree import ElementTree as etree
 from webob import Response as HttpResponse
 from radarpost.mailbox import create_mailbox as _create_mailbox, is_mailbox
-from radarpost.mailbox import Message, MailboxInfo
+from radarpost.mailbox import Message, MailboxInfo, Subscription, SUBSCRIPTION_TYPE
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
@@ -210,8 +211,10 @@ def _delete_user(request, username):
 def mailbox_rest(request, mailbox_slug):
     if request.method == 'GET' or request.method == 'HEAD':
         return mailbox_exists(request, mailbox_slug)
-    if request.method == 'POST':
+    elif request.method == 'PUT':
         return create_mailbox(request, mailbox_slug)
+    elif request.method == 'POST':
+        return update_mailbox(request, mailbox_slug)
     elif request.method == 'DELETE': 
         return delete_mailbox(request, mailbox_slug)
     else: 
@@ -231,8 +234,6 @@ def mailbox_exists(request, mailbox_slug):
         return HttpResponse(status=404)
     return HttpResponse()
 
-VALID_TITLE_PAT = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_ \+\=\-\?\.\,\'\`\"\!\@\#\$\%\^\&\*\(\)\]\[\<\>\}\{]{0,255}$')
-
 def create_mailbox(request, mailbox_slug):
     """
     create a mailbox.  request.POST may contain
@@ -245,13 +246,7 @@ def create_mailbox(request, mailbox_slug):
         info = None
         if request.body:
             try:
-                info = {}
-                raw_info = json.loads(request.body)
-                title = raw_info.get('title')
-                if title:
-                    if VALID_TITLE_PAT.match(title) is None:
-                        raise ValueError()
-                    info['name'] = raw_info['title']
+                info = _mailbox_info_json(request)
             except:
                 return HttpResponse(status=400)
         
@@ -267,6 +262,43 @@ def create_mailbox(request, mailbox_slug):
         return HttpResponse(status=201)
     except PreconditionFailed:
         return HttpResponse(status=409)
+
+def update_mailbox(request, mailbox_slug):
+    """
+    updates a mailbox's info
+    """
+    ctx = request.context
+    couchdb = ctx.get_couchdb_server()
+    try:
+        dbname = ctx.get_database_name(mailbox_slug)
+        mb = couchdb[dbname]
+        if not is_mailbox(mb):
+            return HttpResponse(status=404)
+        if not ctx.user.has_perm(PERM_UPDATE, mb):
+            return HttpResponse(status=401)
+
+        info = _mailbox_info_json(request)
+        mbinfo = MailboxInfo.get(mb)
+        try:
+            mbinfo.user_update(info)
+        except: 
+            return HttpResponse(status=400)
+        mbinfo.store(mb)
+        
+        return HttpResponse()
+    except ResourceNotFound:
+        return HttpResponse(status=404)
+
+VALID_TITLE_PAT = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_ \+\=\-\?\.\,\'\`\"\!\@\#\$\%\^\&\*\(\)\]\[\<\>\}\{]{0,255}$')
+def _mailbox_info_json(request):
+    info = {}
+    raw_info = json.loads(request.body)
+    title = raw_info.get('title')
+    if title:
+        if VALID_TITLE_PAT.match(title) is None:
+            raise ValueError()
+        info['title'] = raw_info['title']
+    return info
 
 def delete_mailbox(request, mailbox_slug):
     """
@@ -360,7 +392,7 @@ def _render_atom_feed(request, mb, messages):
           {'id': feed_url,
            'self_link': feed_url,
            'updated': datetime.utcnow(), # XXX
-           'title': info.name or request.context.get_mailbox_slug(mb.name),
+           'title': info.title or request.context.get_mailbox_slug(mb.name),
            'entries': entries,
           })
 
@@ -402,6 +434,151 @@ def _atom_type_template(message, request, force_type=None):
     
     template_name = 'radar/atom/entry/%s.xml' % mtype
     return request.context.get_template(template_name)
+
+#################################################
+#
+# JSON API for subscription management
+#
+#################################################
+
+def subscriptions_rest(request, mailbox_slug):
+    if request.method == 'GET': 
+        return _get_subscriptions_json(request, mailbox_slug)
+    elif request.method == 'POST': 
+        return _create_subscriptions_json(request, mailbox_slug)
+
+def _get_subscriptions_json(request, mailbox_slug):
+
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    subs = []
+    for sub in Subscription.view(mb, Subscription.by_type,
+                                 include_docs=True):
+        subs.append(_sub_json(sub))
+
+    return HttpResponse(json.dumps(subs),
+                        content_type="application/x-json")
+
+def _create_subscriptions_json(request, mailbox_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    if not ctx.user.has_perm(PERM_UPDATE, mb):
+        return HttpResponse(status=401)
+
+    try:
+        params = json.loads(request.body)
+    except:
+        return HttpResponse(status=400)
+
+    if not isinstance(params, dict):
+        return HttpResponse(status=400)
+
+    try:
+        sub_type = params.get('type')
+        del params['type']
+        
+        sub = Subscription.create_type(sub_type)
+        sub.user_update(params)
+        sub.store(mb)
+        return HttpResponse(json.dumps({'slug': sub.id}),
+                            content_type='application/x-json',
+                            status=201)
+    except: 
+        return HttpResponse(status=400)
+
+
+def subscription_rest(request, mailbox_slug, sub_slug):
+    if request.method == 'HEAD': 
+        return _subscription_exists(request, mailbox_slug, sub_slug) 
+    elif request.method == 'GET':
+        return _get_subscription_json(request, mailbox_slug, sub_slug)
+    elif request.method == 'POST': 
+        return _update_subscription(request, mailbox_slug, sub_slug)
+    elif request.method == 'DELETE': 
+        return _delete_subscription(request, mailbox_slug, sub_slug)
+
+def _subscription_exists(request, mailbox_slug, sub_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+    sub = Subscription.load(mb, sub_slug)
+    if sub is None or sub.type != SUBSCRIPTION_TYPE: 
+        return HttpResponse(status=404)
+    return HttpResponse()
+
+        
+def _get_subscription_json(request, mailbox_slug, sub_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    sub = Subscription.load(mb, sub_slug)
+    if sub is None or sub.type != SUBSCRIPTION_TYPE: 
+        return HttpResponse(status=404)
+
+    return HttpResponse(json.dumps(_sub_json(sub)), 
+                        content_type="application/x-json")
+
+def _update_subscription(request, mailbox_slug, sub_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    sub = Subscription.load(mb, sub_slug)
+    if sub is None or sub.type != SUBSCRIPTION_TYPE: 
+        return HttpResponse(status=404)
+
+    if not ctx.user.has_perm(PERM_UPDATE, mb):
+        return HttpResponse(status=401)
+
+
+    params = _get_params_by_ct(request)
+    try:
+        sub.user_update(params)
+        sub.store(mb)
+        return HttpResponse()
+    except:
+        return HttpResponse(status=400)
+    
+def _delete_subscription(request, mailbox_slug, sub_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    if not ctx.user.has_perm(PERM_UPDATE, mb):
+        return HttpResponse(status=401)
+
+    sub = Subscription.load(mb, sub_slug)
+    if sub is None or sub.type != SUBSCRIPTION_TYPE: 
+        return HttpResponse(status=404)
+
+    try:
+        del mb[sub.id]
+    except ResourceNotFound: 
+        return HttpResponse(status=404)
+
+    return HttpResponse()
+
+def _sub_json(sub):
+    sub_dict = copy.deepcopy(sub.unwrap())
+    
+    sub_dict['slug'] = sub_dict['_id']
+    del sub_dict['_id']
+    
+    sub_dict['type'] = sub_dict['subscription_type']
+    del sub_dict['subscription_type']
+    
+    return sub_dict
 
 #################################################
 #
@@ -448,7 +625,7 @@ def _get_opml(request, mb):
     root.append(head)
     
     title = etree.Element("title")
-    title.text = info.name or mb.name
+    title.text = info.title or mb.name
     head.append(title)
     
     body = etree.Element("body")

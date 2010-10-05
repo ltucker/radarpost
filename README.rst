@@ -70,8 +70,8 @@ GET /user
 =========
 retrieve info for currently logged in user.
 
-Body
-----
+Response Body
+--------------
 json structure with user info
 {'is_anonymous': <boolean>, ['userid': <userid>], [name: <viewable identifier>], ...}
 
@@ -121,8 +121,8 @@ Results
 
 GET /user/<userid>
 ==================
-Body
-----
+Response Body
+-------------
 json structure with user info
 {'userid': <userid>, name: <viewable identifier>, ...}
 
@@ -137,6 +137,8 @@ PUT /user/<userid>
 ==================================
 create a new user with username=<userid> with the info specified
 
+Request Body 
+------------
 body varies on content-type header of 
 submission. Accepts form submission or json.
 
@@ -164,6 +166,9 @@ POST /user/<userid>
 ===================
 update the info of an existing user
 
+
+Request Body 
+------------
 body varies on content-type header of 
 submission. Accepts form submission or json.
 
@@ -225,12 +230,12 @@ Results
 404 - the mailbox does not exist
 
 
-POST /<mbid>
+PUT /<mbid>
 ============
 try to create a mailbox at the url specified.  
 
-Body
--------
+PUT Body
+--------
 body of post may contain a json document initial details about
 the mailbox of the form:
 
@@ -241,12 +246,114 @@ Results
 201 - if successfully created
 409 - the mailbox already exists
 
+POST /<mbid>
+============
+update a mailbox at the url specified.  
+
+Request Body
+------------
+body of post may contain a json document initial details about
+the mailbox of the form:
+
+{'name': "The displayed title of the mailbox"}
+
+Results
+--------
+200 - if successfully updated
+404 - the mailbox does not exist
+
+
 DELETE /<mbid>
 ==============
 destroy the mailbox at mbid
 
 Results
----------
+--------
 
 200 - successfully deleted
 404 - mailbox did not exist
+
+
+=================
+Subscriptions API
+=================
+
+GET /<mbid>/subscriptions
+==========================
+retrieve json structure representing subscriptions
+
+Response Body
+-------------
+of the form 
+[{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}, ...]
+eg: 
+[{'slug': '7c43fb2bc54cec30c98edbf6a31ad535', 
+  'type': 'feed', 
+  'title': 'Example Feed', 
+  'url': 'http://www.example.com/feeds/1'}, ...]
+
+Results
+--------
+404 - the mailbox 'mbid' does not exist
+
+POST /<mbid>/subscriptions
+===========================
+
+create a subscription in the mailbox 'mbid'
+
+Request Body
+------------
+
+of the form
+{'type': <subscription type>, 'title': <title>, <... type specific>}
+eg: 
+{'type': 'feed', 
+ 'title': 'Example Feed', 
+ 'url': 'http://www.example.com/feeds/1'}
+ 
+Response Body
+-------------
+{'slug': <new slug>}
+ 
+Results 
+-------
+201 - the subscription was created
+
+
+HEAD /<mbid>/subscriptions/<subid>
+===================================
+test the existence of a subscription at the url given
+
+Results
+--------
+200 - the subscription exists
+404 - the mailbox or the subscription does not exist
+
+GET /<mbid>/subscriptions/<subid>
+==================================
+get info about a particular subscription
+
+Response Body
+-------------
+of the form 
+{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}
+eg: 
+{'slug': '7c43fb2bc54cec30c98edbf6a31ad535', 
+  'type': 'feed', 
+  'title': 'Example Feed', 
+  'url': 'http://www.example.com/feeds/1'}
+
+Results
+--------
+200 - the subscription exists
+404 - the mailbox or subscription does not exist
+
+
+DELETE /<mbid>/subscriptions/<subid>
+===================================
+delete the subscription at the url given
+
+Results
+--------
+200 - the subscription was deleted
+404 - the mailbox or the subscription did not exist

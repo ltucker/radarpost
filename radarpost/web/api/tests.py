@@ -1,10 +1,211 @@
 import json
 from xml.etree import ElementTree as etree
-from radarpost.mailbox import is_mailbox
+from radarpost.mailbox import is_mailbox, MailboxInfo
 from radarpost.user import User
 from radarpost.web.context import get_couchdb_server, get_database_name
 from radarpost.web.context import get_mailbox, get_mailbox_slug
 from radarpost.web.tests import RadarTestCase
+
+class TestSubscriptionAPI(RadarTestCase):
+    
+    def test_create_sub_post(self):
+        """
+        test create subscription by POST to <mbid>/subscriptions
+        """
+        url = 'http://example.com/feed/1'
+        title = 'The Example Feed'
+        
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+        
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        subs_url = self.url_for('subscriptions_rest', mailbox_slug=slug)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+        
+        assert len(all_subs) == 0
+        
+        info = {'type': 'feed', 'title': title, 'url': url}
+        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+
+        assert len(all_subs) == 1
+        assert all_subs[0]['type'] == 'feed'
+        assert all_subs[0]['title'] == title
+        assert all_subs[0]['url'] == url
+        
+    def test_delete_sub(self):
+        """
+        test deleting a subscription by DELETE
+        """
+        
+        url = 'http://example.com/feed/1'
+        title = 'The Example Feed'
+
+        url2 = 'http://example.com/feed/2'
+        title2 = 'The Example Feed 2'
+
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        subs_url = self.url_for('subscriptions_rest', mailbox_slug=slug)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+        assert len(all_subs) == 0
+        
+        # create two subscriptions
+        info = {'type': 'feed', 'title': title, 'url': url}
+        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        
+        info = {'type': 'feed', 'title': title2, 'url': url2}
+        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+
+        assert len(all_subs) == 2
+
+        # delete the second subscription
+        for sub in all_subs: 
+            if sub['url'] == url2: 
+                del_url = self.url_for('subscription_rest',
+                                       mailbox_slug=slug,
+                                       sub_slug=sub['slug'])
+                c.delete(del_url)
+        
+        # check that the first subscription is the only thing there
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+        assert len(all_subs) == 1
+        assert all_subs[0]['type'] == 'feed'
+        assert all_subs[0]['title'] == title
+        assert all_subs[0]['url'] == url
+
+
+    def test_sub_get(self):
+        """
+        test GET to subscription slug to retrieve info
+        """
+        
+        url = 'http://example.com/feed/1'
+        title = 'The Example Feed'
+
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        subs_url = self.url_for('subscriptions_rest', mailbox_slug=slug)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+        assert len(all_subs) == 0
+
+        info = {'type': 'feed', 'title': title, 'url': url}
+        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        sub_slug = json.loads(response.body)['slug']
+        info_url = self.url_for('subscription_rest', mailbox_slug=slug, 
+                                sub_slug=sub_slug)
+
+        response = c.get(info_url)
+        subinfo = json.loads(response.body)
+        assert subinfo['type'] == 'feed'
+        assert subinfo['title'] == title
+        assert subinfo['url'] == url
+
+
+    def test_sub_head(self):
+        """
+        test HEAD to check subscription existence
+        """
+
+        url = 'http://example.com/feed/1'
+        title = 'The Example Feed'
+
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        subs_url = self.url_for('subscriptions_rest', mailbox_slug=slug)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+        assert len(all_subs) == 0
+
+        info = {'type': 'feed', 'title': title, 'url': url}
+        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        sub_slug = json.loads(response.body)['slug']
+        info_url = self.url_for('subscription_rest', mailbox_slug=slug, 
+                                sub_slug=sub_slug)
+
+        c.head(info_url)
+
+    def test_update_sub_post(self):
+        """
+        test updating a subscription by POST'ing to its url
+        """
+        
+        url = 'http://example.com/feed/1'
+        title = 'The Example Feed'
+
+        url2 = 'http://example.com/feed/2'
+        title2 = 'The Example Feed 2'
+
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        subs_url = self.url_for('subscriptions_rest', mailbox_slug=slug)
+
+        response = c.get(subs_url)
+        all_subs = json.loads(response.body)
+
+        assert len(all_subs) == 0
+
+        info = {'type': 'feed', 'title': title, 'url': url}
+        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        sub_slug = json.loads(response.body)['slug']
+
+        sub_url = self.url_for('subscription_rest', mailbox_slug=slug, 
+                               sub_slug=sub_slug)
+
+        response = c.get(sub_url)
+        sub_info = json.loads(response.body)
+        assert sub_info['type'] == 'feed'
+        assert sub_info['title'] == title
+        assert sub_info['url'] == url
+
+        # POST some bad info, should fail and leave the sub unchanged
+        info = {'title': title2, 'url': url2, 'some_bad-key': 'val'}
+        c.post(sub_url, json.dumps(info), content_type='application/x-json', status=400)
+        response = c.get(sub_url)
+        sub_info = json.loads(response.body)
+        assert sub_info['type'] == 'feed'
+        assert sub_info['title'] == title
+        assert sub_info['url'] == url
+
+        # POST to change title and URL, valid, should change the sub
+        info = {'title': title2, 'url': url2}
+        c.post(sub_url, json.dumps(info), content_type='application/x-json')
+        response = c.get(sub_url)
+        sub_info = json.loads(response.body)
+        assert sub_info['type'] == 'feed'
+        assert sub_info['title'] == title2
+        assert sub_info['url'] == url2
 
 class TestUserAPI(RadarTestCase):
     
@@ -402,7 +603,7 @@ class TestMailboxREST(RadarTestCase):
             self.login_as_admin(c)
             
             c.head(mb_url, status=404)
-            c.post(mb_url, '{}', content_type="application/json", status=201)
+            c.put(mb_url, '{}', content_type="application/json", status=201)
             c.head(mb_url, status=200)
 
             
@@ -414,7 +615,25 @@ class TestMailboxREST(RadarTestCase):
             couchdb = get_couchdb_server(self.config)
             if dbname in couchdb: 
                 del couchdb[dbname]
-                
+    
+    def test_mailbox_update(self):
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        mb_url = self.url_for('mailbox_rest', mailbox_slug=slug)
+        c = self.get_test_app()
+        self.login_as_admin(c)
+        
+        new_title = "The Test Mailbox's New Title"
+        mbinfo = MailboxInfo.get(mb)
+        assert mbinfo.title != new_title
+        
+        c.post(mb_url, json.dumps({'title': new_title}), 
+               content_type="application/x-json", status=200)
+
+        mbinfo = MailboxInfo.get(mb)
+        assert mbinfo.title == new_title
+        
+        
     def test_mailbox_delete(self):
         """
         test deleting a mailbox

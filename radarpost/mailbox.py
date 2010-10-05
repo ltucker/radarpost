@@ -22,6 +22,47 @@ Objects in the slot are added as design documents to all mailboxes
 that are created.
 """
 
+class RadarDocument(Document):
+    """
+    Helper class to define methods available to all documents.
+    """
+    
+    def user_update(self, params):
+        for k, v in params.items():
+            if not hasattr(self, k): 
+                raise AttributeError('Object %s has no attribute %s' % (self, k))
+            if hasattr(self, 'user_updatable') and not k in self.user_updatable:
+                raise AttributeError('Cannot update attribute %s on %s' % (k, self))
+            
+            setattr(self, k, v)
+
+class DowncastDoc(RadarDocument):
+    """
+    When a DowncastDoc is returned from a view on a base class, 
+    it's instance type is determined by plugins. the intent is
+    to allow subclass instances with different behaviors and 
+    fields to be returned from a view.  eg a FeedSubscription 
+    when getting all Subscriptions.
+    """
+
+    @classmethod
+    def create_type(cls, typename):
+        instance = None
+        if typename: 
+            for create in plugins.get(cls.SUBTYPE_PLUGIN):
+                instance = create(typename) 
+                if instance is not None:
+                    break
+        if instance is None:
+            instance = cls()
+        return instance
+
+    @classmethod
+    def wrap(cls, data):
+        instance = cls.create_type(data.get(cls.SUBTYPE_FIELD))
+        instance._data = data
+        return instance
+
 #####################################################
 #
 # Basic Document Types
@@ -44,7 +85,7 @@ class SourceInfo(Mapping):
     title = TextField()
 
 
-class Message(Document):
+class Message(DowncastDoc):
     """
     A message in a mailbox.
     """
@@ -58,7 +99,10 @@ class Message(Document):
     # helpful view constants
     by_timestamp = '_design/mailbox/_view/messages_by_timestamp'
 
-class Subscription(Document):
+    SUBTYPE_PLUGIN = 'radar.mailbox.mailbox_subtype'
+    SUBTYPE_FIELD = 'message_type'
+
+class Subscription(DowncastDoc):
     """
     Represents a subscription to a particular
     source of messages by a mailbox.
@@ -76,14 +120,19 @@ class Subscription(Document):
     STATUS_OK        = 'ok'
     STATUS_ERROR     = 'error'
     STATUS_UNCHANGED = 'unchanged'
+    
+    SUBTYPE_PLUGIN = 'radar.mailbox.subscription_subtype'
+    SUBTYPE_FIELD = 'subscription_type'
 
-class MailboxInfo(Document):
+    user_updatable = ('title', )
+
+class MailboxInfo(RadarDocument):
     """
     General metadata about a mailbox.
     """
     type = TextField(default=MAILBOXINFO_TYPE)
     version = TextField(default="0.0.1")
-    name = TextField()
+    title = TextField()
     
     def __init__(self, **values):
         Document.__init__(self, id=MAILBOXINFO_ID, **values)
@@ -92,6 +141,7 @@ class MailboxInfo(Document):
     def get(cls, mailbox):
         return MailboxInfo.load(mailbox, MAILBOXINFO_ID)
 
+    user_updatable = ('title', )
 
 #####################################################
 #

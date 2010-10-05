@@ -1,16 +1,13 @@
-import loops from plugin loading
-config loader / commands w config / better server startup
-create users command
-create users UI
+subscription management UI
 basic auth "login"
 super basic view of news items UI
-subscription management UI
-caching
 basic styling
+caching
 basic curation / tagging
+create users UI
 
 =defer=
-server reload on file change
+debug server reload on file change
 plugin ordering and overriding
 split out users app
 auth a la django auth backends

@@ -30,6 +30,14 @@ class BasicNewsItem(Message):
     link = TextField()
     content = TextField()
 
+    user_updatable = ('title', 'author', 'link', 'content')
+
+@plugins.plugin(Message.SUBTYPE_PLUGIN)
+def create_basicnewsitem(typename):
+    if typename == BASICNEWSITEM_TYPE: 
+        return BasicNewsItem()
+    return None
+
 class FeedSubscription(Subscription):
     """
     Represents a subscription of a mailbox to a particular 
@@ -45,6 +53,15 @@ class FeedSubscription(Subscription):
 
     # helpful view constants
     by_url = '_design/feed/_view/feeds_by_url'
+
+    user_updatable = Subscription.user_updatable + ('url', )
+
+@plugins.plugin(Subscription.SUBTYPE_PLUGIN)
+def create_feedsub(typename):
+    if typename == FEED_SUBSCRIPTION_TYPE: 
+        return FeedSubscription()
+    return None
+
 
 #####################################
 #

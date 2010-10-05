@@ -25,9 +25,20 @@ def add_routes(mapper):
     mapper.connect("user_rest", "/user/{userid}",
                    action="user_rest", controller=api,
                    requirements=userid_req,
-                   conditions={'method': ['GET', 'PUT', 'POST', 'HEAD', 'DELETE']})
+                   conditions={'method': ['HEAD', 'GET', 'PUT', 'POST', 'DELETE']})
 
     ##############
+
+    mapper.connect("subscriptions_rest", "/{mailbox_slug}/subscriptions",
+                   action="subscriptions_rest", controller=api,
+                   requirements=slug_req,
+                   conditions={'method': ['GET', 'POST']})
+    
+    mapper.connect("subscription_rest", "/{mailbox_slug}/subscriptions/{sub_slug}",
+                  action="subscription_rest", controller=api,
+                  requirements=slug_req,
+                  conditions={'method': ['HEAD', 'GET', 'POST', 'DELETE']})
+
 
     mapper.connect("feeds_opml", "/{mailbox_slug}/feeds.opml",
                    action="feeds_opml", controller=api, 
@@ -41,4 +52,4 @@ def add_routes(mapper):
 
     mapper.connect("mailbox_rest", "/{mailbox_slug}",
                    action="mailbox_rest", controller=api, requirements=slug_req,
-                   conditions={'method': ['HEAD', 'POST', 'DELETE']})
+                   conditions={'method': ['HEAD', 'PUT', 'POST', 'DELETE']})

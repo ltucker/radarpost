@@ -38,7 +38,7 @@ $(document).ready(function() {
         };
 
         $.ajax({
-            type: 'POST',
+            type: 'PUT',
             url: '/' + slug,
             contentType: 'application/json',
             data: JSON.stringify(mb_info),

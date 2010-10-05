@@ -76,7 +76,7 @@ class RadarTestCase(TestCase):
         response = c.head(mb_url, status='*')
         if response.status_int != 404:
             response = c.delete(mb_url, status=200)
-        c.post(mb_url, '{}', content_type="application/json", status=201)
+        c.put(mb_url, '{}', content_type="application/json", status=201)
         self.logout(c)
         return get_mailbox(self.config, slug)
 
