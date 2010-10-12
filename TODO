@@ -1,21 +1,24 @@
 subscription management UI
-basic auth "login"
 super basic view of news items UI
 basic styling
 caching
-basic curation / tagging
+basic curation UI
 create users UI
 
 =defer=
+tagging + UI
+differentiated feeds
+split out users app
+require radar user role, ignore others?
+sync mailboxes / user db command
+shell
 debug server reload on file change
 plugin ordering and overriding
-split out users app
-auth a la django auth backends
 openid
+auth a la django auth backends
 running tasks w/o cron
 pubsubhub
 twitter
-shell
 sphinx docs
 basic filtering
 cleanup tasks

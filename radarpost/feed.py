@@ -9,7 +9,9 @@ import re
 from radarpost.mailbox import Message, Subscription, DESIGN_DOC_PLUGIN
 from radarpost import plugins
 
-__all__ = ['FEED_SUBSCRIPTION_TYPE', 'BASICNEWSITEM_TYPE', 'BasicNewsItem', 'FeedSubscription']
+__all__ = ['FEED_SUBSCRIPTION_TYPE', 'BASICNEWSITEM_TYPE', 
+           'BasicNewsItem', 'FeedSubscription', 'parse',
+           'InvalidFeedError']
 
 FEED_SUBSCRIPTION_TYPE = 'feed'
 BASICNEWSITEM_TYPE = 'basic_news_item'
@@ -98,17 +100,24 @@ def create_basic_news_item(entry, feed, subscription, news_item=None):
                              stripped_content(feed.feed.get('title_detail', None), 128) or \
                              subscription.url[0:128]
 
-    content = entry.get('content', [None])[0].value
-    if content is None:
+    content = entry.get('content')
+    if content is None or len(content) == 0: 
         content = entry.get('summary_detail', None)
-    if content:
-        news_item.content = content
+    else:
+        content = content[0]
+    
+    if content is not None:
+        news_item.content = content.value
 
     # a basic news item's fingerprint is the md5 
     # digest of its utf-8 encoding.
-    fingerprint = md5()
-    fingerprint.update(news_item.content.encode('utf-8'))
-    fingerprint = fingerprint.hexdigest()
+    if news_item.content:
+        fingerprint = md5()
+        fingerprint.update(news_item.content.encode('utf-8'))
+        fingerprint = fingerprint.hexdigest()
+    else: 
+        fingerprint = guid
+
     news_item.fingerprint = fingerprint
 
     return news_item
@@ -174,7 +183,8 @@ def update_feed_subscription(mailbox, subscription, feed, full_update=True,
             subscription.last_ids = current_ids
             subscription.last_update = now
             if subscription_delta is not None:
-                subscription.update(subscription_delta)
+                for k,v in subscription_delta.items():
+                    setattr(subscription, k, v)
             subscription.store(mailbox)
             break
         except ResourceConflict:
@@ -246,7 +256,7 @@ def parse(content, url):
     return ff
 
 class FakeLink(object): 
-    def __init__(sefl, rel, href, title): 
+    def __init__(self, rel, href, title): 
         self.rel = rel
         self.href = href
         self.title = title

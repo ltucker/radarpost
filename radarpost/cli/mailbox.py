@@ -2,6 +2,7 @@ from couchdb import Server, ResourceConflict, ResourceNotFound
 from datetime import datetime
 import logging
 import traceback
+from radarpost.agent import SUBSCRIPTION_UPDATE_HANDLER
 from radarpost.feed import *
 from radarpost.mailbox import *
 from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
@@ -36,6 +37,10 @@ class MailboxesCommand(BasicCommand):
                     print 'Mailbox "%s" does not exist' % slug
                     return 1
                 selected.append(couchdb[name])
+            if len(selected) == 0: 
+                self.print_usage()
+                return
+                
             self._do_update(selected, config, options)
 
 class UpdateSubscriptionsCommand(MailboxesCommand):

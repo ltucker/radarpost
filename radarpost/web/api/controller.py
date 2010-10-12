@@ -26,7 +26,6 @@ def login(request):
     """
     handles session login
     """
-    
     try:
         params = _get_params_by_ct(request)
         username = params['username']
@@ -143,7 +142,7 @@ def _user_info(request, user):
                 'name': user.get_public_id()}
 
     return HttpResponse(json.dumps(info),
-                        content_type="application/x-json")
+                        content_type="application/json")
 
 def _update_user(request, username):
     """
@@ -460,7 +459,7 @@ def _get_subscriptions_json(request, mailbox_slug):
         subs.append(_sub_json(sub))
 
     return HttpResponse(json.dumps(subs),
-                        content_type="application/x-json")
+                        content_type="application/json")
 
 def _create_subscriptions_json(request, mailbox_slug):
     ctx = request.context
@@ -487,7 +486,7 @@ def _create_subscriptions_json(request, mailbox_slug):
         sub.user_update(params)
         sub.store(mb)
         return HttpResponse(json.dumps({'slug': sub.id}),
-                            content_type='application/x-json',
+                            content_type='application/json',
                             status=201)
     except: 
         return HttpResponse(status=400)
@@ -525,7 +524,7 @@ def _get_subscription_json(request, mailbox_slug, sub_slug):
         return HttpResponse(status=404)
 
     return HttpResponse(json.dumps(_sub_json(sub)), 
-                        content_type="application/x-json")
+                        content_type="application/json")
 
 def _update_subscription(request, mailbox_slug, sub_slug):
     ctx = request.context
@@ -747,10 +746,11 @@ def _get_params_by_ct(request):
     request.  supports form encoding and json. returns a dict or None 
     if there was no recognized parameters.
     """
+    content_type = request.headers.get('Content-Type', '').split(';')[0]
 
-    if request.headers['Content-Type'] == 'application/x-www-form-urlencoded': 
+    if content_type == 'application/x-www-form-urlencoded': 
         return request.params
-    elif request.headers['Content-Type'] == 'application/x-json':
+    elif content_type == 'application/json':
         return json.loads(request.body)
     else:
         return None

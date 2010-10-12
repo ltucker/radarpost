@@ -1,5 +1,5 @@
 from webob import Response as HttpResponse
-from radarpost.mailbox import MailboxInfo
+from radarpost.mailbox import MailboxInfo, Subscription
 from radarpost.web.context import TemplateContext, render_to_response
 
 
@@ -53,7 +53,7 @@ def list_mailboxes(request):
         info = MailboxInfo.get(mb)
         mailboxes.append({
             'slug': slug,
-            'title': info.name or slug
+            'title': info.title or slug
         })
     return render_to_response('radar/list_mailboxes.html', 
                               TemplateContext(request, {'mailboxes': mailboxes}))
@@ -66,9 +66,14 @@ def create_mailbox(request):
         return res
     return render_to_response('radar/create_mailbox.html', 
                               TemplateContext(request, {}))
-    
-def view_mailbox(request, mailbox_slug):
-    return render_to_response('radar/view_mailbox.html', 
-                              TemplateContext(request, {}))
-                              
 
+def view_mailbox(request, mailbox_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    ctx = {}
+    ctx['mailbox_slug'] = mailbox_slug
+    return render_to_response('radar/view_mailbox.html', 
+                              TemplateContext(request, ctx))

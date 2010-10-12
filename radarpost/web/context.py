@@ -1,3 +1,4 @@
+import base64
 from couchdb import Server, ResourceNotFound
 from jinja2 import Environment
 from jinja2.loaders import ChoiceLoader, PackageLoader
@@ -15,7 +16,7 @@ from radarpost.plugins import plugin
 from radarpost.mailbox import iter_mailboxes as _iter_mailboxes
 from radarpost.user import User, AnonymousUser
 
-__all__ = ['RequestContext', 'build_routes',
+__all__ = ['RequestContext', 'build_routes', 'config_section',
            'get_couchdb_server', 'get_database_name', 'get_mailbox_slug',
            'get_mailbox', 'get_mailbox_db_prefix', 'iter_mailboxes',
            'TEMPLATE_FILTERS','TEMPLATE_CONTEXT_PROCESSORS']
@@ -38,7 +39,7 @@ class RequestContext(object):
         self.config = config
         self.template_env = _make_template_env(config)
         self._current_user = None
-
+        
     def url_for(self, *args, **kw):
         return self.request.environ['routes.url'](*args, **kw)
 
@@ -56,13 +57,14 @@ class RequestContext(object):
     @property
     def session(self):
         return self.request.environ['beaker.session']
-        
+
     USER_SESSION_KEY = 'user_id'
     @property
     def user(self):
         """
         Property that returns the currently logged in user
         """
+
         if self._current_user is None and self.USER_SESSION_KEY in self.session:
             try:
                 user_id = self.session[self.USER_SESSION_KEY]
@@ -71,11 +73,18 @@ class RequestContext(object):
             except ResourceNotFound:
                 # non-existant user, wipe this session
                 self.session.invalidate()
-    
+
         if self._current_user is None:
-            self._current_user = AnonymousUser()
-            
+            self._current_user = AnonymousUser() 
+        
         return self._current_user
+    
+    def set_request_user(self, user):
+        """
+        sets the user for this request to the user specified. 
+        This does not affect the user referenced in the session.
+        """
+        self._current_user = user
     
     def set_session_user(self, user):
         """
@@ -88,7 +97,7 @@ class RequestContext(object):
             self.session[self.USER_SESSION_KEY] = user.id
             self.session.save()
         self._current_user = user
-        
+
 
     ###########################################
     #
@@ -156,6 +165,40 @@ def app_ids(config):
     specified in the current configuation.
     """
     return config['web.apps']
+
+def config_section(section, config, reprefix=''):
+    if not section.endswith('.'):
+        section = section + '.'
+    section_options = {}
+    for k in config.keys():
+        if k.startswith(section): 
+            section_options[reprefix + k[len(section):]] = config[k]
+    return section_options
+
+###################################
+#
+# Per-request HTTP Auth
+#
+###################################
+
+class BadAuthenticator(Exception):
+    pass
+
+def check_http_auth(request):
+    if request.authorization:
+        ctx = request.context
+        try:
+            meth, params = request.authorization
+            if meth.lower() == 'basic':
+                username, password = base64.b64decode(params).split(':')
+                udb = ctx.get_users_database()
+                user = User.get_by_username(udb, username)
+                if user is not None and user.check_password(password) == True:
+                    ctx.set_request_user(user)
+                    return
+        except:
+            pass
+        raise BadAuthenticator()
 
 #############################
 #

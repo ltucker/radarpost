@@ -1,9 +1,18 @@
 from couchdb import Server, ResourceConflict, ResourceNotFound
-from radarpost.feed import FEED_SUBSCRIPTION_TYPE, update_feed_subscription
+from datetime import datetime
+import hashlib
+from httplib2 import Http
+import logging
+import traceback
+
+from radarpost.feed import FEED_SUBSCRIPTION_TYPE, parse, update_feed_subscription, InvalidFeedError
+from radarpost.mailbox import Subscription
 from radarpost import plugins
 from radarpost.agent.plugins import SUBSCRIPTION_UPDATE_HANDLER
 
-def poll_feed(mb, sub, http):
+log = logging.getLogger(__name__)
+
+def poll_feed(mb, sub, http, force=False):
     """
     poll a single feed in a single mailbox.
     
@@ -17,6 +26,7 @@ def poll_feed(mb, sub, http):
     did_update, status, count = _try_poll_feed(mb, sub, http, force)
 
     if did_update:
+        log.info("feed %s => created %d new items" % (sub.url, count))
         return
 
     # no update performed, update the subscription info to 
@@ -43,7 +53,7 @@ def _try_poll_feed(mb, sub, http, force):
         response, content = http.request(sub.url)
         log.info("feed %s => status %d" % (sub.url, response.status))
         if response.status != 200:
-            return False, Subscription.ERROR, 0
+            return False, Subscription.STATUS_ERROR, 0
 
         # try to reject update based on content digest...
         digest = hashlib.md5()
@@ -53,21 +63,20 @@ def _try_poll_feed(mb, sub, http, force):
         if digest == sub.last_digest:
             if not force:
                 log.info("mailbox %s <= feed %s: unchanged since last update" % (mb.name, sub.url))
-                return False, Subscription.UNCHANGED, 0
+                return False, Subscription.STATUS_UNCHANGED, 0
             else:
                 log.info("mailbox %s <= feed %s unchanged since last update (*forcing update)" % (mb.name, sub.url))
 
         feed = parse(content, sub.url)
-        count = update_feed_subscription(mailbox, subscription, feed,
-                                         subscription_delta={'last_digest': digest})
-        return True, Subscription.OK, count
+        count = update_feed_subscription(mb, sub, feed, subscription_delta={'last_digest': digest})
+        return True, Subscription.STATUS_OK, count
 
     except InvalidFeedError:
         log.error("mailbox %s <= feed %s: parse error" % (mb.name, sub.url))
-        return False, Subscription.ERROR, 0
+        return False, Subscription.STATUS_ERROR, 0
     except:
         log.error("mailbox %s <= feed %s: unexpected error: %s" % (mb.name, sub.url, traceback.format_exc()))
-        return False, Subscription.ERROR, 0
+        return False, Subscription.STATUS_ERROR, 0
 
 @plugins.plugin(SUBSCRIPTION_UPDATE_HANDLER)
 def poll_feed_sub(mb, sub, config):

@@ -13,7 +13,7 @@
     </author>
 
     <content type="html">
-        <![CDATA[{{ message.content }}]]>    
+        <![CDATA[{% autoescape false %}{{ message.content }}{% endautoescape %}]]>    
     </content>
     {% endblock %}
 </entry>

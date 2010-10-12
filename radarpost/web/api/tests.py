@@ -1,3 +1,4 @@
+import base64
 import json
 from xml.etree import ElementTree as etree
 from radarpost.mailbox import is_mailbox, MailboxInfo
@@ -29,7 +30,7 @@ class TestSubscriptionAPI(RadarTestCase):
         assert len(all_subs) == 0
         
         info = {'type': 'feed', 'title': title, 'url': url}
-        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
 
         response = c.get(subs_url)
         all_subs = json.loads(response.body)
@@ -64,10 +65,10 @@ class TestSubscriptionAPI(RadarTestCase):
         
         # create two subscriptions
         info = {'type': 'feed', 'title': title, 'url': url}
-        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
         
         info = {'type': 'feed', 'title': title2, 'url': url2}
-        c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
 
         response = c.get(subs_url)
         all_subs = json.loads(response.body)
@@ -112,7 +113,7 @@ class TestSubscriptionAPI(RadarTestCase):
         assert len(all_subs) == 0
 
         info = {'type': 'feed', 'title': title, 'url': url}
-        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        response = c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
         sub_slug = json.loads(response.body)['slug']
         info_url = self.url_for('subscription_rest', mailbox_slug=slug, 
                                 sub_slug=sub_slug)
@@ -145,7 +146,7 @@ class TestSubscriptionAPI(RadarTestCase):
         assert len(all_subs) == 0
 
         info = {'type': 'feed', 'title': title, 'url': url}
-        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        response = c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
         sub_slug = json.loads(response.body)['slug']
         info_url = self.url_for('subscription_rest', mailbox_slug=slug, 
                                 sub_slug=sub_slug)
@@ -177,7 +178,7 @@ class TestSubscriptionAPI(RadarTestCase):
         assert len(all_subs) == 0
 
         info = {'type': 'feed', 'title': title, 'url': url}
-        response = c.post(subs_url, json.dumps(info), content_type='application/x-json', status=201)
+        response = c.post(subs_url, json.dumps(info), content_type='application/json', status=201)
         sub_slug = json.loads(response.body)['slug']
 
         sub_url = self.url_for('subscription_rest', mailbox_slug=slug, 
@@ -191,7 +192,7 @@ class TestSubscriptionAPI(RadarTestCase):
 
         # POST some bad info, should fail and leave the sub unchanged
         info = {'title': title2, 'url': url2, 'some_bad-key': 'val'}
-        c.post(sub_url, json.dumps(info), content_type='application/x-json', status=400)
+        c.post(sub_url, json.dumps(info), content_type='application/json', status=400)
         response = c.get(sub_url)
         sub_info = json.loads(response.body)
         assert sub_info['type'] == 'feed'
@@ -200,7 +201,7 @@ class TestSubscriptionAPI(RadarTestCase):
 
         # POST to change title and URL, valid, should change the sub
         info = {'title': title2, 'url': url2}
-        c.post(sub_url, json.dumps(info), content_type='application/x-json')
+        c.post(sub_url, json.dumps(info), content_type='application/json')
         response = c.get(sub_url)
         sub_info = json.loads(response.body)
         assert sub_info['type'] == 'feed'
@@ -263,9 +264,9 @@ class TestUserAPI(RadarTestCase):
         assert not uid in udb
         c = self.get_test_app()
         self.login_as_admin(c)
-        c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=201)
+        c.post(create_url, json.dumps({'username': uname}), content_type="application/json", status=201)
         assert uid in udb
-        c.post(create_url, json.dumps({'username': uname}), content_type="application/x-json", status=409)
+        c.post(create_url, json.dumps({'username': uname}), content_type="application/json", status=409)
         del udb[uid]
 
         # test passwords.
@@ -273,21 +274,21 @@ class TestUserAPI(RadarTestCase):
         bad_pass = 'b0w1'
         # missing password 2
         c.post(create_url, json.dumps({'username': uname, 'password': password}), 
-               content_type="application/x-json", status=400)
+               content_type="application/json", status=400)
         assert uid not in udb
 
         # passwords don't match
         c.post(create_url, json.dumps({'username': uname, 
                             'password': password, 
                             'password2': bad_pass}), 
-                            content_type="application/x-json", status=400)
+                            content_type="application/json", status=400)
         assert uid not in udb
 
         # okay 
         c.post(create_url, json.dumps({'username': uname, 
                             'password': password, 
                             'password2': password}), 
-                            content_type="application/x-json", status=201)
+                            content_type="application/json", status=201)
         user = User.get_by_username(udb, uname)
         assert user.check_password(password)
         assert not user.check_password(bad_pass)
@@ -354,10 +355,10 @@ class TestUserAPI(RadarTestCase):
         c = self.get_test_app()
         self.login_as_admin(c)
         c.put(create_url, json.dumps({}), 
-              content_type="application/x-json", status=201)
+              content_type="application/json", status=201)
         assert uid in udb
         c.put(create_url, json.dumps({}),
-              content_type="application/x-json", status=409)
+              content_type="application/json", status=409)
         del udb[uid]
 
         # test passwords.
@@ -365,21 +366,21 @@ class TestUserAPI(RadarTestCase):
         bad_pass = 'b0w1'
         # missing password 2
         c.put(create_url, json.dumps({'password': password}), 
-              content_type="application/x-json",
+              content_type="application/json",
               status=400)
         assert uid not in udb
 
         # passwords don't match
         c.put(create_url, json.dumps({'password': password, 
                             'password2': bad_pass}), 
-                            content_type="application/x-json",
+                            content_type="application/json",
                             status=400)
         assert uid not in udb
 
         # okay 
         c.put(create_url, json.dumps({'password': password, 
                            'password2': password}), 
-                           content_type="application/x-json",
+                           content_type="application/json",
                            status=201)
 
         user = User.get_by_username(udb, uname)
@@ -463,7 +464,7 @@ class TestUserAPI(RadarTestCase):
         
         # bad login 
         c.post(login_url, json.dumps({'username': uname, 'password': badpw}), 
-               content_type="application/x-json", status=401)
+               content_type="application/json", status=401)
         res = c.get(self.url_for('current_user_info'))
         info = json.loads(res.body)
         assert info['is_anonymous'] == True
@@ -471,7 +472,7 @@ class TestUserAPI(RadarTestCase):
 
         # successfull login
         c.post(login_url, json.dumps({'username': uname, 'password': password}), 
-               content_type="application/x-json", status=200)
+               content_type="application/json", status=200)
         res = c.get(self.url_for('current_user_info'))
         info = json.loads(res.body)
         assert info['is_anonymous'] == False
@@ -483,6 +484,86 @@ class TestUserAPI(RadarTestCase):
         info = json.loads(res.body)
         assert info['is_anonymous'] == True
         assert info.get('userid', None) is None
+
+    def test_login_basic_auth(self):
+        uname = 'joe'
+        password = 'bl0w'
+        badpw = 'lb0w'
+
+        udb = self.get_users_database()
+        user = User(username=uname, password=password)
+        user.store(udb)
+
+        c = self.get_test_app()
+
+        # not logged in 
+        # res = c.get(self.url_for('current_user_info'))
+        # info = json.loads(res.body)
+        # assert info['is_anonymous'] == True
+        # assert info.get('userid', None) is None
+        
+
+        bad_method = ('Authorization', 'Bad Bad=News')
+        c.get(self.url_for('current_user_info'), headers=[bad_method], status=401)
+        
+        bad_auth = _basic_auth(uname, badpw)
+        c.get(self.url_for('current_user_info'), headers=[bad_auth], status=401)
+        
+        # should be joe for this request
+        good_auth = _basic_auth(uname, password)
+        res = c.get(self.url_for('current_user_info'), headers=[good_auth])
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == 'joe'
+
+        # but this is not persistent
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+    def test_basic_auth_overrides_cookie(self):
+        uname = 'joe'
+        password = 'bl0w'
+        badpw = 'lb0w'
+        
+        uname2 = 'jane'
+        password2 = 'j03'
+
+        udb = self.get_users_database()
+        user = User(username=uname, password=password)
+        user.store(udb)
+
+        user2 = User(username=uname2, password=password2)
+        user2.store(udb)
+
+        c = self.get_test_app()
+
+        # not logged in 
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == True
+        assert info.get('userid', None) is None
+
+        # successfull login 
+        login_url = self.url_for('login')
+        c.post(login_url, {'username': user.username, 'password': password}, status=200)
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == user.username
+        
+        # do a request with basic auth for the other user...
+        res = c.get(self.url_for('current_user_info'), headers=[_basic_auth(user2.username, password2)])
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == user2.username
+        
+        # this should not affect the session.
+        res = c.get(self.url_for('current_user_info'))
+        info = json.loads(res.body)
+        assert info['is_anonymous'] == False
+        assert info['userid'] == user.username
 
     def test_delete_user(self):
         uname = 'joe'
@@ -517,7 +598,7 @@ class TestUserAPI(RadarTestCase):
 
         # missing password2
         c.post(user_url, json.dumps({'username': uname, 'password': pw2}), 
-               content_type="application/x-json", status=400)
+               content_type="application/json", status=400)
         user = User.get_by_username(udb, uname)
         assert user.check_password(pw1)
         assert not user.check_password(pw2)
@@ -526,7 +607,7 @@ class TestUserAPI(RadarTestCase):
         c.post(user_url, json.dumps({'username': uname, 
                             'password': pw2, 
                             'password2': pw1}), 
-                            content_type="application/x-json", status=400)
+                            content_type="application/json", status=400)
         user = User.get_by_username(udb, uname)
         assert user.check_password(pw1)
         assert not user.check_password(pw2)
@@ -536,7 +617,7 @@ class TestUserAPI(RadarTestCase):
         c.post(user_url, json.dumps({'username': uname, 
                             'password': pw2, 
                             'password2': pw2}), 
-                            content_type="application/x-json", status=200)
+                            content_type="application/json", status=200)
         user = User.get_by_username(udb, uname)
         assert user.check_password(pw2)
         assert not user.check_password(pw1)
@@ -628,7 +709,7 @@ class TestMailboxREST(RadarTestCase):
         assert mbinfo.title != new_title
         
         c.post(mb_url, json.dumps({'title': new_title}), 
-               content_type="application/x-json", status=200)
+               content_type="application/json", status=200)
 
         mbinfo = MailboxInfo.get(mb)
         assert mbinfo.title == new_title
@@ -927,4 +1008,8 @@ def make_opml(feeds):
         opml += '<outline type="rss" xmlUrl="%s" title="%s" />' % (feed, title)
     opml += '</body></opml>'
     return opml
+
+def _basic_auth(un, passwd):
+    auth = "Basic %s" % base64.b64encode('%s:%s' % (un, passwd))
+    return ('Authorization', auth)
 

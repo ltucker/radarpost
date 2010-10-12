@@ -1,5 +1,109 @@
 {% extends "radar/base_site.html" %}
 
+{% block extra_head %}
+<script>
+var mailbox_slug = "{{ mailbox_slug }}";
+
+var show_error = function(elid, message) {
+    $('#' + elid + '_error').attr('innerHTML', message);
+};
+
+var subscription_row = function(sub) {
+    var title = sub.title || sub.url || sub.slug; 
+    var row = '<li id="' + sub.slug + '" class="subscription">'
+    if (sub.url) {
+        row += '<a href="' + sub.url + '">';
+        row += title;
+        row += "</a>"
+    }
+    else {
+        row += title;
+    }
+    row += '[<a class="delete-button" href="#" title="delete">X</a>]'
+    row += '</li>'
+    return row; 
+}
+
+var update_subscriptions = function() {
+    $.ajax({
+        type: 'GET',
+        url: mailbox_slug + '/subscriptions',
+        contentType: 'application/json',
+        success: function(data) {
+            var sub_list = $('#subscription_list');
+            sub_list.html('');
+            for (var i = 0; i < data.length; i++) {
+                sub_list.append(subscription_row(data[i]));
+            }
+        }
+    })
+}
+
+$(document).ready(function() {
+    $('li.subscription a.delete-button').live('click', function(evt) {
+        evt.preventDefault();
+        var delete_slug = $(evt.target).closest('li').attr('id');
+        $.ajax({
+            type: 'DELETE',
+            url: mailbox_slug + '/subscriptions/' + delete_slug,
+            complete: function(req) {
+                if (req.status == 200) {
+                    update_subscriptions();
+                }
+            }
+        });
+    })
+    update_subscriptions();
+    
+    $('#add_subscription').submit(function(evt) {
+        evt.preventDefault();
+        var sub_info = {
+            title: $('#subscription_name').attr('value'),
+            url: $('#subscription_url').attr('value'),
+            type: $('#subscription_type').attr('value')
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: mailbox_slug + '/subscriptions',
+            contentType: 'application/json',
+            data: JSON.stringify(sub_info),
+            complete: function(req) {
+                if (req.status != 201) {
+                    return show_error("subscription", 'Failed to add subscription');
+                }
+                else {
+                    update_subscriptions();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
 {% block content %}
-View
+<h2>Items</h2>
+<div id="items">
+    <ul>
+        {% for item in items %}
+        <li>{{ item.title }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div id="subscriptions">
+    <h2>Subscriptions</h2>
+    <ul id="subscription_list">
+    </ul>
+
+    <h2>New Subscription</h2>
+    <form id="add_subscription" action="{{ url_for('subscriptions_rest', mailbox_slug=mailbox_slug) }}">
+        <div id="subscription_error"></div>
+        <input type="hidden" id="subscription_type" name="type" value="feed" />
+        <div><label for="title">Title</label><input id="subscription_title" type="text" name="title" /></div>
+        <div><label for="url">URL</label><input id="subscription_url" type="text" name="url" /></div>
+        <input type="submit" value="Add Subscription"/>
+    </form>
+</div>
 {% endblock %}
