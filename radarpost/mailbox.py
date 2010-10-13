@@ -1,13 +1,15 @@
 import copy
 from couchdb.mapping import *
 from couchdb.http import ResourceNotFound, PreconditionFailed
+from datetime import datetime
 from radarpost import plugins
 
 
 __all__ = ['Message', 'SourceInfo', 'Subscription', 'MailboxInfo', 
            'MESSAGE_TYPE', 'SUBSCRIPTION_TYPE', 'MAILBOXINFO_TYPE', 
            'MAILBOXINFO_ID', 'DESIGN_DOC', 'DESIGN_DOC_PLUGIN', 
-           'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes']
+           'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes',
+           'trim_mailbox']
 
 ####################################################
 #
@@ -83,7 +85,6 @@ class SourceInfo(Mapping):
     subscription_id = TextField()
     subscription_type = TextField()
     title = TextField()
-
 
 class Message(DowncastDoc):
     """
@@ -214,6 +215,36 @@ def is_mailbox(db):
     except ResourceNotFound:
         # if it's not there, not a mailbox
         return False
+
+#####################################################
+#
+# Helpful operations over mailboxes
+#
+#####################################################
+
+def trim_mailbox(mb, max_age):
+    max_date = datetime.utcnow() - max_age
+    
+    params = {}
+    params['startkey'] = DateTimeField()._to_json(max_date)
+    params['reduce'] = False
+    params['descending'] = True
+
+    updates = []
+    for mrow in mb.view(Message.by_timestamp, **params):
+        updates.append({'_id': mrow.id, 
+                        '_rev': mrow.value['_rev'],
+                        '_deleted': True})
+    
+    errors = 0
+    deletes = 0
+    for (success, did, rev_exc) in mb.update(updates): 
+        if success: 
+            deletes += 1
+        else: 
+            errors += 1
+            print rev_exc
+    return deletes
 
 
 #####################################################

@@ -52,7 +52,20 @@ $(document).ready(function() {
                 }
             }
         });
-    })
+    });
+    $('a.delete-mailbox-button').live('click', function(evt) {
+        evt.preventDefault();
+        $.ajax({
+            type: 'DELETE',
+            url: mailbox_slug,
+            complete: function(req) {
+                if (req.status == 200) {
+                    /* redirect */
+                    window.location.href = "/";
+                }
+            }
+        });
+    });    
     update_subscriptions();
     
     $('#add_subscription').submit(function(evt) {
@@ -83,8 +96,12 @@ $(document).ready(function() {
 {% endblock %}
 
 {% block content %}
-<h2>Items</h2>
+<ul>
+    <li><a class="delete-mailbox-button delete-button" href="#">Delete this mailbox</a></li>
+</ul>
+
 <div id="items">
+    <h2>Items</h2>
     <ul>
         {% for item in items %}
         <li>{{ item.title }}</li>

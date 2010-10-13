@@ -6,7 +6,7 @@ import feedparser
 from hashlib import md5
 import re
 
-from radarpost.mailbox import Message, Subscription, DESIGN_DOC_PLUGIN
+from radarpost.mailbox import Message, SourceInfo, Subscription, DESIGN_DOC_PLUGIN
 from radarpost import plugins
 
 __all__ = ['FEED_SUBSCRIPTION_TYPE', 'BASICNEWSITEM_TYPE', 
@@ -19,6 +19,11 @@ BASICNEWSITEM_TYPE = 'basic_news_item'
 # document subclasses for news feeds 
 # used inside a mailbox
 
+
+class FeedSourceInfo(SourceInfo):
+    self_link = TextField()
+    alt_link = TextField()
+
 class BasicNewsItem(Message):
     """
     Represents a general RSS news item
@@ -26,6 +31,8 @@ class BasicNewsItem(Message):
     """
     message_type = TextField(default=BASICNEWSITEM_TYPE)
     
+    source = DictField(FeedSourceInfo)
+
     item_id = TextField()
     title = TextField()
     author = TextField()
@@ -99,6 +106,11 @@ def create_basic_news_item(entry, feed, subscription, news_item=None):
     news_item.source.title = subscription.title or \
                              stripped_content(feed.feed.get('title_detail', None), 128) or \
                              subscription.url[0:128]
+    for link in feed.feed.get('links', []):
+        if link.rel == 'alternate': 
+            news_item.source.alt_link = link.href
+        if link.rel == 'self': 
+            news_item.source.self_link = link.href
 
     content = entry.get('content')
     if content is None or len(content) == 0: 
@@ -152,7 +164,7 @@ def update_feed_subscription(mailbox, subscription, feed, full_update=True,
     else: 
         current_ids = subscription.last_ids
 
-    new_messages = 0
+    new_messages = []
     for entry in feed.entries:
         message = message_processor(entry, feed, subscription)
 
@@ -164,18 +176,25 @@ def update_feed_subscription(mailbox, subscription, feed, full_update=True,
         if message.id in subscription.last_ids: 
             continue
 
-        try:
-            if (message_filter is None or 
-                message_filter(message) == True):
-                message.store(mailbox)
-                new_messages += 1
-        except ResourceConflict:
-            # oops, we've already got it. 
-            pass
+        if (message_filter is not None and message_filter(message) == False):
+            continue
+    
+        new_messages.append(message)
+
+    new_message_count = 0
+    for (success, doc_id, rev_ex) in mailbox.update(new_messages):
+        if success == True:
+            new_message_count += 1
+            
+        # N.B. conflicts are ignored. 
+        # this could also be exposed, reported or logged
+        # if needed at some point.
+        elif not isinstance(rev_ex, ResourceConflict):
+            raise
 
     # great, now update the subscription info.
     now = datetime.utcnow()
-    
+
     # if we are the latest updater, put in our info.
     while(subscription.last_update is None or subscription.last_update < now):
         try:
@@ -194,7 +213,7 @@ def update_feed_subscription(mailbox, subscription, feed, full_update=True,
             except ResourceNotFound:
                 # deleted from underneath us, bail out.
                 break
-    return new_messages
+    return new_message_count
 
 #####################################
 #
