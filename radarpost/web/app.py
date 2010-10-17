@@ -8,7 +8,7 @@ from webob import Request, Response
 
 
 from radarpost.config import CONFIG_INI_PARSER_PLUGIN, parse_bool
-from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand
+from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, InvalidArguments
 from radarpost import plugins
 from radarpost.web.context import RequestContext, build_routes, config_section
 from radarpost.web.context import check_http_auth, BadAuthenticator
@@ -115,32 +115,32 @@ class StartDevWebServer(BasicCommand):
     command_name = "serve"
     description = "start development web server"
 
-    def setup_options(self, parser):
-        parser.set_usage(r"%prog" + " %s <command> [interface:][port] [options]" % self.command_name)
+    @classmethod
+    def setup_options(cls, parser):
+        parser.set_usage(r"%prog" + " %s <command> [interface:][port] [options]" % cls.command_name)
 
-    def __call__(self, config, options, args):
-        if len(args) > 2: 
-            self.print_usage()
-            return 1
-        elif len(args) == 2:
+    def __call__(self, address=None):
+        """
+        start development web server
+        address - where to serve, [interface:]port
+        """
+        if address is not None:
             interface = '127.0.0.1'
-            port = args[1]
+            port = address
             if ':' in port:
                 interface, port = port.split(':')
             try:
                 port = int(port)
             except: 
-                print 'Unable to parse port "%s"' % args[1]
-                self.print_usage()
-                return 1
+                raise InvalidArguments('Unable to parse port "%s"' % address)
         else:
             interface = '127.0.0.1'
             port = DEFAULT_RADAR_PORT
 
         from cherrypy.wsgiserver import CherryPyWSGIServer as WSGIServer
 
-        app = RequestLogger(make_app(config))
-        cherry_opts = config_section('cherrypy', config) 
+        app = RequestLogger(make_app(self.config))
+        cherry_opts = config_section('cherrypy', self.config) 
         server = WSGIServer((interface, port), app, **cherry_opts)
         
         print "* serving on %s:%d" % (interface, port)
@@ -149,4 +149,4 @@ class StartDevWebServer(BasicCommand):
         except KeyboardInterrupt:
             server.stop()        
 
-plugins.register(StartDevWebServer(), COMMANDLINE_PLUGIN)
+plugins.register(StartDevWebServer, COMMANDLINE_PLUGIN)

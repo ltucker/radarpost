@@ -1,3 +1,4 @@
+print_usage() in shell
 view updates after / during long updates
 super basic view of news items UI
 basic styling / ui
@@ -7,6 +8,7 @@ basic curation UI
 create users UI
 
 =defer=
+doc sybtype plugins are shady, what about metaclass solution?
 tagging + UI
 differentiated feeds
 split out users app

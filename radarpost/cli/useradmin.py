@@ -1,6 +1,5 @@
 from couchdb import Server, ResourceNotFound
 from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
-from radarpost.main import find_command, print_basic_usage, print_unknown_command
 from radarpost import plugins
 from radarpost.user import User, ROLE_ADMIN
 from getpass import getpass
@@ -10,8 +9,9 @@ class CreateUserCommand(BasicCommand):
     command_name = 'create_user'
     description = 'create a user'
 
-    def setup_options(self, parser):
-        parser.set_usage(r"%prog" + "%s <username> [options]" % self.command_name)
+    @classmethod
+    def setup_options(cls, parser):
+        parser.set_usage(r"%prog" + "%s <username> [options]" % cls.command_name)
         parser.add_option('--admin', action="store_true", dest="is_admin",
                           default=False, help="create an administrative user")
         parser.add_option('--locked', action="store_true", dest="is_locked",
@@ -19,18 +19,18 @@ class CreateUserCommand(BasicCommand):
                           help="create with locked password, do not prompt for password.")
 
 
-    def __call__(self, config, options, args):
-        if len(args) != 2:
-            self.print_usage()
-            return 1
-
-        username = args[1]
-        couchdb = Server(config['couchdb.address'])
+    def __call__(self, username, is_locked=False, is_admin=False):
+        """
+        Create a user with the given username. 
+        is_locked - if True, create with a locked password
+        is_admin  - if True, grant administrative rights to the user
+        """
+        couchdb = Server(self.config['couchdb.address'])
         try:
-            udb = couchdb[config['couchdb.users_database']]
+            udb = couchdb[self.config['couchdb.users_database']]
         except: 
-            print "Failed to connect to couchdb at %s/%s" % (config['couchdb.address'], 
-                                                             config['couchdb.users_database'])
+            print "Failed to connect to couchdb at %s/%s" % (self.config['couchdb.address'], 
+                                                             self.config['couchdb.users_database'])
             return 1
             
         new_user = User(username=username)
@@ -38,7 +38,7 @@ class CreateUserCommand(BasicCommand):
             print 'User "%s" already exists' % username
             return 1
         
-        if not options.is_locked:
+        if not is_locked:
             done = False
             while(not done):
                 password = getpass(prompt="Password for %s: " % username)
@@ -49,12 +49,12 @@ class CreateUserCommand(BasicCommand):
                     print "Passwords did not match, try again.\n"        
             new_user.set_password(password)
 
-        if options.is_admin:
+        if is_admin:
             new_user.roles = [ROLE_ADMIN]
 
         new_user.store(udb)
         print 'Created user "%s"' % username
-plugins.register(CreateUserCommand(), COMMANDLINE_PLUGIN)
+plugins.register(CreateUserCommand, COMMANDLINE_PLUGIN)
 
 
 
@@ -64,25 +64,25 @@ class ResetPasswordCommand(BasicCommand):
     command_name = 'reset_password'
     description = "reset a user's password"
 
-    def setup_options(self, parser):
-        parser.set_usage(r"%prog" + "%s <username> [options]" % self.command_name)
+    @classmethod
+    def setup_options(cls, parser):
+        parser.set_usage(r"%prog" + "%s <username> [options]" % cls.command_name)
         parser.add_option('--locked', action="store_true", dest="is_locked",
                           default=False, 
                           help="lock the user's password, do not prompt for password.")
 
 
-    def __call__(self, config, options, args):
-        if len(args) != 2:
-            self.print_usage()
-            return 1
-
-        username = args[1]
-        couchdb = Server(config['couchdb.address'])
+    def __call__(self, username, is_locked=False):
+        """
+        Reset the password of the user with the given username.
+        is_locked - if True, lock the user's password
+        """
+        couchdb = Server(self.config['couchdb.address'])
         try:
-            udb = couchdb[config['couchdb.users_database']]
+            udb = couchdb[self.config['couchdb.users_database']]
         except: 
-            print "Failed to connect to couchdb at %s/%s" % (config['couchdb.address'], 
-                                                             config['couchdb.users_database'])
+            print "Failed to connect to couchdb at %s/%s" % (self.config['couchdb.address'], 
+                                                             self.config['couchdb.users_database'])
             return 1
         
         try:
@@ -91,7 +91,7 @@ class ResetPasswordCommand(BasicCommand):
             print 'User "%s" does not exist' % username
             return 1
             
-        if not options.is_locked:
+        if not is_locked:
             done = False
             while(not done):
                 password = getpass(prompt="New password for %s: " % username)
@@ -106,5 +106,4 @@ class ResetPasswordCommand(BasicCommand):
 
         user.store(udb)
         print 'Password changed for user "%s"' % username
-
-plugins.register(ResetPasswordCommand(), COMMANDLINE_PLUGIN)
+plugins.register(ResetPasswordCommand, COMMANDLINE_PLUGIN)

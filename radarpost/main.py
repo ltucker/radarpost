@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+import traceback
 
 #
 # Command Plugin
@@ -15,17 +16,36 @@ import sys
 #
 COMMANDLINE_PLUGIN = 'radarpost.main.command'
 
+class InvalidArguments(Exception):
+    pass
+
 class BasicCommand(object):
+    
+    def __init__(self, config):
+        self.config = config
     
     def print_usage(self):
         parser = get_basic_option_parser()
-        parser.set_usage(r"%prog " + " %s [options]" % self.command_name)
+        parser.set_usage(r"%prog " + "%s [options]" % self.command_name)
         self.setup_options(parser)
-        print "%s: %s" % (self.command_name, self.description)
+        print "\n%s: %s" % (self.command_name, self.description)
         parser.print_help()
 
-    def setup_options(self, parser):
+    @classmethod
+    def setup_options(cls, parser):
         pass
+        
+    def clean_options(self, options):
+        kw = dict(options.__dict__)
+        del kw['config_filenames']
+        return kw
+        
+    def run(self, args, options):
+        kw = self.clean_options(options)
+        try:
+            self(*args, **kw)
+        except TypeError:
+            self.print_usage()
 
 def get_basic_option_parser():
     parser = OptionParser(add_help_option=False)
@@ -36,10 +56,10 @@ def get_basic_option_parser():
                       default=[])
     return parser
 
-def find_command(command_name):
-    for command in plugins.get(COMMANDLINE_PLUGIN):
-        if command_name == command.command_name:
-            return command
+def find_command_type(command_name):
+    for Command in plugins.get(COMMANDLINE_PLUGIN):
+        if command_name == Command.command_name:
+            return Command
     return None
 
 def print_basic_usage(argv):
@@ -61,14 +81,14 @@ def main(argv=None):
     command_name = argv[1]
     argv = argv[0:1] + argv[2:]
 
-    command = find_command(command_name)
-    if command is None: 
+    Command = find_command_type(command_name)
+    if Command is None: 
         print_basic_usage(argv)
         print_unknown_command(command_name)
         sys.exit(1)
 
     parser = get_basic_option_parser()
-    command.setup_options(parser)
+    Command.setup_options(parser)
     options, args = parser.parse_args(argv)
 
     if len(options.config_filenames) > 0: 
@@ -98,8 +118,15 @@ def main(argv=None):
         print "An error occurred reading the configuration."
         print err.message
         sys.exit(1)
-        
-    command(config, options, args)
+    
+    command = Command(config)
+    try:
+        command.run(args[1:], options)
+    except InvalidArguments as e: 
+        if len(e.args):
+            print e.args[0]
+        command.print_usage()
+        return 1
 
 if __name__ == '__main__':
     main()
