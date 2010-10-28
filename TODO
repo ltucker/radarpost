@@ -1,13 +1,16 @@
-print_usage() in shell
-view updates after / during long updates
+Visible RSS link
+OPML import from UI
+UI security pass
+super basic styling / ui
 super basic view of news items UI
-basic styling / ui
 caching
-basic curation API 
-basic curation UI
-create users UI
+favicon
+delete item UI
 
-=defer=
+===
+
+security testing
+create users UI
 doc sybtype plugins are shady, what about metaclass solution?
 tagging + UI
 differentiated feeds
@@ -27,3 +30,4 @@ basic filtering
 cleanup tasks
 paver / installation
 split framework
+i18n

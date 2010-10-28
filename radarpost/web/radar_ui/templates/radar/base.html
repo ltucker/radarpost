@@ -1,29 +1,44 @@
 <!DOCTYPE HTML>
 <html>
   <head>
-  {% block page_head %}
-    <title>{% block title %}{% endblock %}</title>
+    <title>{% block title %}RadarPost{% endblock %}</title>
     {% block base_javascripts %}
     <script src="{{ url_for('static_file', path='json2.js') }}"></script>
     <script src="{{ url_for('static_file', path='jquery-1.4.2.min.js') }}"></script>
     <script src="{{ url_for('static_file', path='radar.js')}}"></script>
     {% endblock %}
+    {% block base_styles %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static_file', path='radar.css')}}"/>
+    {% endblock %}
     {% block extra_head %}{% endblock %}
-  {% endblock %}
   </head>
   <body>
-  {% block login %}
-  <div id="login">
-    {% if request.context.user.is_anonymous() %}
-    <a href="{{ url_for('login_page') }}">Login</a>
-    {% else %}
-    Logged in as {{ request.context.user.username }}
-    <a href="{{ url_for('logout_page') }}">Logout</a>
-    {% endif %}
-  </div>
-  {% endblock %}
-  {% block page_body %}
-    {% block content %}{% endblock %}
-  {% endblock %}
+    <div id="main">
+      <div id="header">
+        <a class="top-link" href="{{url_for('front_page')}}">
+          <img class="logo" src="{{ url_for('static_file', path="images/logo.gif")}}" />
+        </a>
+        <h1>{% block header_title %}RadarPost{% endblock %}</h1>
+        <div id="global-nav">
+          <ul>
+              {% if request.context.user.is_anonymous() %}
+              <li><a href="{{ url_for('login_page') }}">Login</a></li>
+              {% else %}
+              <li><a href="{{ url_for('logout_page') }}">Logout {{ request.context.user.username }}</a></li>
+              {% endif %}
+          </ul>
+        </div>
+        <div id="context-nav">
+            {% block context_nav %}
+            {% endblock %}
+        </div>
+      </div>
+      <div id="content">
+          {% block content %}
+          {% endblock %}
+      </div>
+      <div id="footer">
+      </div>
+    </div>
   </body>
 </html>

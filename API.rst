@@ -1,21 +1,7 @@
 =================
-Configuration
-=================
-
-apps 
-
-=================
-App Organization 
-=================
-
-urls  
-templates 
-static
-
-
-=================
 User / Login API
 =================
+
 
 User Identification <userid>
 ==============================
@@ -25,10 +11,16 @@ String used to identify a particular user.  Publicly viewable
 identifiers may vary from this identifier.
 
 
+HTTP Basic Auth
+================
+Login credentials may be specified on a per-request basis using http basic 
+authentication. http://en.wikipedia.org/wiki/Basic_access_authentication
+
+
 POST /login
 ============
-login to a session.  body varies on content-type header of 
-submission. Accepts form submission or json.
+login to a session and obtain a cookie.  body varies on 
+content-type header of submission. Accepts form submission or json.
 
 application/x-json, eg: 
 {'username': <username>, 'password': <password>}
@@ -275,10 +267,51 @@ Results
 
 
 =================
+Messages API
+=================
+
+DELETE /<mbid>/items/<message_id>
+
+delete a message in a mailbox
+
+Results
+--------
+200 - the message was deleted
+404 - the mailbox or the message did not exist
+
+
+=================
 Subscriptions API
 =================
 
-GET /<mbid>/subscriptions
+GET /<mbid>/subscriptions.opml
+==============================
+retrieve an OPML document representing all Feed type subscriptions
+
+Response Body
+-------------
+OPML feed list 
+
+PUT /<mbid>/subscriptions.opml
+==============================
+replace all subscriptions with only those in the OPML document found
+in the request body. 
+
+Request Body 
+------------
+OPML feed list
+
+POST /<mbid>/subscriptions.opml
+==============================
+Add subscriptions in the OPML document found in the 
+request body.
+
+Request Body 
+------------
+OPML feed list
+
+
+GET /<mbid>/subscriptions.json
 ==========================
 retrieve json structure representing subscriptions
 
@@ -296,8 +329,8 @@ Results
 --------
 404 - the mailbox 'mbid' does not exist
 
-POST /<mbid>/subscriptions
-===========================
+POST /<mbid>/subscriptions.json
+================================
 
 create a subscription in the mailbox 'mbid'
 

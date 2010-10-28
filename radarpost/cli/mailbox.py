@@ -47,6 +47,7 @@ class MailboxHelper(object):
     def _update_subscription(self, mailbox, sub):
         for handler in plugins.get(SUBSCRIPTION_UPDATE_HANDLER):
             if handler(mailbox, sub, self.config) == True:
+                refresh_views(mailbox)
                 return True
         log.info('%s: no update handler for subscription "%s" of type "%s"' % 
                  (mb.name, sub.id, sub.subscription_type))

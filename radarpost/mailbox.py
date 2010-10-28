@@ -2,14 +2,16 @@ import copy
 from couchdb.mapping import *
 from couchdb.http import ResourceNotFound, PreconditionFailed
 from datetime import datetime
+import logging
 from radarpost import plugins
-
 
 __all__ = ['Message', 'SourceInfo', 'Subscription', 'MailboxInfo', 
            'MESSAGE_TYPE', 'SUBSCRIPTION_TYPE', 'MAILBOXINFO_TYPE', 
            'MAILBOXINFO_ID', 'DESIGN_DOC', 'DESIGN_DOC_PLUGIN', 
            'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes',
-           'trim_mailbox']
+           'trim_mailbox', 'refresh_views']
+
+log = logging.getLogger(__name__)
 
 ####################################################
 #
@@ -222,30 +224,53 @@ def is_mailbox(db):
 #
 #####################################################
 
-def trim_mailbox(mb, max_age):
+def trim_mailbox(mb, max_age, batch_size=100):
     max_date = datetime.utcnow() - max_age
-    
+
+
     params = {}
     params['startkey'] = DateTimeField()._to_json(max_date)
     params['reduce'] = False
     params['descending'] = True
+    params['limit'] = batch_size
 
-    updates = []
-    for mrow in mb.view(Message.by_timestamp, **params):
-        updates.append({'_id': mrow.id, 
-                        '_rev': mrow.value['_rev'],
-                        '_deleted': True})
-    
     errors = 0
     deletes = 0
-    for (success, did, rev_exc) in mb.update(updates): 
-        if success: 
-            deletes += 1
-        else: 
-            errors += 1
-            print rev_exc
+    done = False
+    
+    while not done: 
+        updates = []
+        for mrow in mb.view(Message.by_timestamp, **params):
+            updates.append({'_id': mrow.id, 
+                            '_rev': mrow.value['_rev'],
+                            '_deleted': True})
+    
+        if len(updates) == 0:
+            break
+        if len(updates) < batch_size:
+            done = True
+    
+        for (success, did, rev_exc) in mb.update(updates): 
+            if success:
+                deletes += 1
+            else:
+                errors += 1
+        refresh_views(mb)
+
     return deletes
 
+def refresh_views(mb):
+    for dd in plugins.get(DESIGN_DOC_PLUGIN):
+        if 'views' in dd and len(dd['views'].keys()) > 0:
+            first_view = dd['views'].keys()[0]
+            view_url = '%s/%s' % (dd['_id'], first_view)
+            log.info("Refreshing views in %s..." % dd['_id'])
+            try:
+                mb.view(view_url, {'count': 0})
+                # aaaand wait...
+            except: 
+                log.error("failed to refresh view %s: %s" % 
+                          (view_url, traceback.format_exc()))
 
 #####################################################
 #

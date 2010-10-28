@@ -8,9 +8,6 @@ var title_to_slug = function(title) {
     return slug;
 };
 var valid_slug_re = new RegExp('^[a-z0-9_]{1,128}$');
-var show_error = function(elid, message) {
-    $('#' + elid + '_error').attr('innerHTML', message);
-};
 
 $(document).ready(function() {  
     var slug_customized = false;

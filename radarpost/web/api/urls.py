@@ -29,26 +29,32 @@ def add_routes(mapper):
 
     ##############
 
-    mapper.connect("subscriptions_rest", "/{mailbox_slug}/subscriptions",
+    mapper.connect("subscriptions_opml", "/{mailbox_slug}/subscriptions.opml",
+                   action="subscriptions_opml", controller=api,
+                   requirements=slug_req,
+                   conditions={'method': ['GET', 'PUT', 'POST', 'HEAD']})
+
+    mapper.connect("subscriptions_rest", "/{mailbox_slug}/subscriptions.json",
                    action="subscriptions_rest", controller=api,
                    requirements=slug_req,
                    conditions={'method': ['GET', 'POST']})
-    
+
     mapper.connect("subscription_rest", "/{mailbox_slug}/subscriptions/{sub_slug}",
                   action="subscription_rest", controller=api,
                   requirements=slug_req,
                   conditions={'method': ['HEAD', 'GET', 'POST', 'DELETE']})
 
 
-    mapper.connect("feeds_opml", "/{mailbox_slug}/feeds.opml",
-                   action="feeds_opml", controller=api, 
-                   requirements=slug_req,
-                   conditions={'method': ['GET', 'PUT', 'POST', 'HEAD']})
 
     mapper.connect("atom_feed", "/{mailbox_slug}/atom.xml",
                    action="atom_feed_latest", controller=api,
                    requirements=slug_req,
                    conditions={'method': ['GET', 'HEAD']})
+
+    mapper.connect("message_rest", "/{mailbox_slug}/items/{message_slug}",
+                   action="message_rest", controller=api, 
+                   requirements=slug_req,
+                   conditions={'method': ['DELETE']})
 
     mapper.connect("mailbox_rest", "/{mailbox_slug}",
                    action="mailbox_rest", controller=api, requirements=slug_req,

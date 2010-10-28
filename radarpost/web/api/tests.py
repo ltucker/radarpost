@@ -667,6 +667,34 @@ class TestUserAPI(RadarTestCase):
         assert not user.check_password(pw1)
 
 
+class TestMessageREST(RadarTestCase):
+    
+    def test_message_delete(self):
+        """
+        test deleting a message by DELETE
+        """
+        from radarpost.mailbox import *
+        
+        message1 = Message(title='Message 1')
+        message2 = Message(title='Message 2')
+        
+        mb = self.create_test_mailbox()
+        slug =  get_mailbox_slug(self.config, mb.name)
+
+        c = self.get_test_app()
+        self.login_as_admin(c)
+
+        message1.store(mb)
+        message2.store(mb)
+
+        assert message1.id in mb
+        assert message2.id in mb
+        
+        c.delete(self.url_for('message_rest', mailbox_slug=slug, message_slug=message1.id))
+        
+        assert message1.id not in mb
+        assert message2.id in mb
+        
 
 
 class TestMailboxREST(RadarTestCase):
@@ -819,7 +847,7 @@ class TestOPML(RadarTestCase):
         mb = self.create_test_mailbox()
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
         response = c.get(opml_url, status=200)
         feeds = feeds_in_opml(response.body)
         
@@ -829,7 +857,7 @@ class TestOPML(RadarTestCase):
         mb = self.create_test_mailbox()
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
         opml = "this ain't opml"
         c.post(opml_url, opml, content_type='text/xml', status=400)
 
@@ -837,7 +865,7 @@ class TestOPML(RadarTestCase):
         mb = self.create_test_mailbox()
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
         opml = "this ain't opml"
         c.put(opml_url, opml, content_type='text/xml', status=400)
 
@@ -847,7 +875,7 @@ class TestOPML(RadarTestCase):
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
         
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
     
         feeds = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -878,7 +906,7 @@ class TestOPML(RadarTestCase):
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
         
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
     
         feeds1 = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -923,7 +951,7 @@ class TestOPML(RadarTestCase):
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
         
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
     
         feeds = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',
@@ -954,7 +982,7 @@ class TestOPML(RadarTestCase):
         slug = get_mailbox_slug(self.config, mb.name)
         c = self.get_test_app()
 
-        opml_url = self.url_for('feeds_opml', mailbox_slug=slug)
+        opml_url = self.url_for('subscriptions_opml', mailbox_slug=slug)
 
         feeds1 = {'http://www.example.org/feeds/1': 'feed 1',
                  'http://www.example.org/feeds/2': 'feed 2',

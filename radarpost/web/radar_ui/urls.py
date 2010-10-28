@@ -23,6 +23,16 @@ def add_routes(mapper):
     mapper.connect("list_mailboxes", "/index",
                    action="list_mailboxes", controller=ui)
 
+    mapper.connect("manage_subscriptions", "/{mailbox_slug}/subscriptions",
+                  action="manage_subscriptions", controller=ui,
+                  requirements=slug_req,
+                  conditions={'method': ['GET']})
+
+    mapper.connect("manage_info", "/{mailbox_slug}/edit",
+                action="manage_info", controller=ui,
+                requirements=slug_req,
+                conditions={'method': ['GET']})
+
     mapper.connect("view_mailbox", "/{mailbox_slug}",
                    action="view_mailbox", controller=ui,
                    requirements=slug_req,

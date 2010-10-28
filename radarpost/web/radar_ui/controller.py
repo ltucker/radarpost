@@ -1,5 +1,5 @@
 from webob import Response as HttpResponse
-from radarpost.mailbox import MailboxInfo, Subscription
+from radarpost.mailbox import MailboxInfo, Subscription, Message, MailboxInfo
 from radarpost.web.context import TemplateContext, render_to_response
 
 
@@ -73,7 +73,44 @@ def view_mailbox(request, mailbox_slug):
     if mb is None:
         return HttpResponse(status=404)
 
+    params = {'limit': 10, 
+              'include_docs': True,
+              'reduce': False,
+              'descending': True}
+
+    info = MailboxInfo.get(mb)
+    items = Message.view(mb, Message.by_timestamp, **params) 
+
     ctx = {}
     ctx['mailbox_slug'] = mailbox_slug
+    ctx['mailbox_title'] = info.title or mailbox_slug
+    ctx['items'] = items
     return render_to_response('radar/view_mailbox.html', 
                               TemplateContext(request, ctx))
+
+def manage_subscriptions(request, mailbox_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+      return HttpResponse(status=404)
+
+    info = MailboxInfo.get(mb)
+
+    ctx = {}
+    ctx['mailbox_slug'] = mailbox_slug
+    ctx['mailbox_title'] = info.title or mailbox_slug
+
+    return render_to_response('radar/subscriptions.html', 
+                            TemplateContext(request, ctx))
+
+def manage_info(request, mailbox_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+      return HttpResponse(status=404)
+
+    ctx = {}
+    ctx['mailbox_slug'] = mailbox_slug
+    return render_to_response('radar/edit.html', 
+                            TemplateContext(request, ctx))
+

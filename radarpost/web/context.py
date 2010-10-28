@@ -340,10 +340,10 @@ def build_routes(config):
         # 
         static_url = config['web.static_files_url']
         if config['web.debug'] == False:
-            router.connect('static_file', '%s{path}' % static_url,
+            router.connect('static_file', '%s{path:.*?}' % static_url,
                            action="always_404", controller='radarpost.web.context')
         else:
-            router.connect('static_file', '%s{path}' % static_url,
+            router.connect('static_file', '%s{path:.*?}' % static_url,
                            action="serve_static_file", controller='radarpost.web.context')
             
     return router

@@ -1,12 +1,19 @@
-{% extends "radar/base_site.html" %}
+{% extends "radar/base_main.html" %}
 
 {% block content %}
 
 <h2>Directory</h2>
-<ul>
+<table class="mailbox-list">
+<tr>
+    <th>Name</th>
+    <th>URL</th>
+</tr>
 {% for mb in mailboxes %}
-  <li><a href="/{{mb.slug}}">/{{mb.slug}}</a> - {{mb.title}}</li>
+  <tr>
+      <td>{{mb.title}}</td>
+      <td><a href="/{{mb.slug}}">/{{mb.slug}}</a></td>
+  </tr>
 {% endfor %}
-<ul>
+</table>
 
 {% endblock %}

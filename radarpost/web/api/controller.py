@@ -7,7 +7,8 @@ import re
 from xml.etree import ElementTree as etree
 from webob import Response as HttpResponse
 from radarpost.mailbox import create_mailbox as _create_mailbox, is_mailbox
-from radarpost.mailbox import Message, MailboxInfo, Subscription, SUBSCRIPTION_TYPE
+from radarpost.mailbox import Message, MESSAGE_TYPE, MailboxInfo
+from radarpost.mailbox import Subscription, SUBSCRIPTION_TYPE
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
@@ -585,7 +586,7 @@ def _sub_json(sub):
 #
 #################################################
 
-def feeds_opml(request, mailbox_slug):
+def subscriptions_opml(request, mailbox_slug):
     """
     handles managing feed subscriptions using an OPML 
     document.
@@ -737,6 +738,32 @@ def _feeds_in_opml(opml):
                 feeds[url] = node.get('title', '')
     return feeds
     
+###############
+    
+def message_rest(request, mailbox_slug, message_slug):
+    if request.method == 'DELETE': 
+        return _delete_message(request, mailbox_slug, message_slug)
+        
+def _delete_message(request, mailbox_slug, message_slug):
+    ctx = request.context
+    mb = ctx.get_mailbox(mailbox_slug)
+    if mb is None:
+        return HttpResponse(status=404)
+
+    if not ctx.user.has_perm(PERM_UPDATE, mb):
+        return HttpResponse(status=401)
+
+    message = Message.load(mb, message_slug)
+    if message is None or message.type != MESSAGE_TYPE: 
+        return HttpResponse(status=404)
+
+    try:
+        del mb[message.id]
+    except ResourceNotFound: 
+        return HttpResponse(status=404)
+
+    return HttpResponse()
+
 ###############
 # helpers
 

@@ -20,7 +20,16 @@ class InvalidArguments(Exception):
     pass
 
 class BasicCommand(object):
+    """
+    Helper base class for Commands.
     
+    subclasses should override as needed and
+    must implement
+    
+    command_name = <name used at command line>  
+    description = <brief description of command>
+    __call__(...): # perform the command
+    """
     def __init__(self, config):
         self.config = config
     
@@ -33,6 +42,10 @@ class BasicCommand(object):
 
     @classmethod
     def setup_options(cls, parser):
+        """
+        may be overridden by subclasses to provide additional 
+        command line arguments like --foo etc.
+        """
         pass
         
     def clean_options(self, options):

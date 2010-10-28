@@ -10,21 +10,29 @@ log = logging.getLogger(__name__)
 
 ENTRY_POINT = 'radarpost_plugins'
 _plugins = None
+_searched = False
 
 def get(slot):
+    global _searched
+    if not _searched: 
+        _searched = True
+        _search()
+
+    return _get(slot)
+
+
+def _get(slot):
     global _plugins
     if _plugins is None:
         _plugins = {}
-        _search()
-
-    return _plugins.setdefault(slot, [])
+    _plugins.setdefault(slot, [])
     return _plugins[slot]
-
+    
 def register(thing, slot):
     """
     declare a plugin
     """
-    get(slot).append(thing)
+    _get(slot).append(thing)
 
 def plugin(slot):
     """
