@@ -63,3 +63,25 @@ Now update the feeds::
     
     INFO:radarpost.agent.feed:polling http://www.example.com/feeds/12
     ...
+    
+    
+Running Tests
+==============
+
+To run the tests, it is recommended that you install nose::
+
+    $ cd radarpost
+    $ source bin/activate
+    $ pip install nose
+    
+To run the tests, run `nosetests` from the radarpost source folder::
+
+    $ cd src/radarpost
+    $ nosetests
+    .............................................................
+    ----------------------------------------------------------------------
+    Ran 61 tests in 12.733s
+    
+
+    
+
