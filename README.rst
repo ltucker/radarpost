@@ -22,8 +22,8 @@ first, edit src/radarpost/radar.ini::
   * serving on 127.0.0.1:9332
   
 Point your browser to the URL shown to check things out.  You'll need to create a user, which 
-can only be done at the command line currently. *warning* unless the configuration is changed, 
-this will create a couchdb user::
+can only be done at the command line currently. **Note**: unless the configuration is changed, 
+this will create a couchdb user in the _users database::
 
   $ radarpost create_user <yourname> --admin -Csrc/radarpost/radar.ini
   
