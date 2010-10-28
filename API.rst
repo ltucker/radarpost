@@ -5,7 +5,7 @@ User / Login API
 
 User Identification <userid>
 ==============================
-^[a-zA-Z0-9_]{0, 64}$
+^[a-zA-Z0-9\_]{0, 64}$
 
 String used to identify a particular user.  Publicly viewable
 identifiers may vary from this identifier.
@@ -20,20 +20,25 @@ authentication. http://en.wikipedia.org/wiki/Basic_access_authentication
 POST /login
 ============
 login to a session and obtain a cookie.  body varies on
-content-type header of submission. Accepts form submission or json.
+content-type header of submission. Accepts form submission or json
 
-application/x-json, eg:
-{'username': <username>, 'password': <password>}
+application/x-json, eg::
 
-x-www-form-urlencoded, eg:
-username=<username>&password=<password>
+    {'username': <username>, 'password': <password>}
+
+x-www-form-urlencoded, eg::
+
+    username=<username>&password=<password>
 
 parameters:
 -----------
-username - the username of the user logging in
-password - the password of the user logging in
-next     - (optional) if specified, send a redirect
-           to this url on successful login.
+username
+  the username of the user logging in
+password
+  the password of the user logging in
+next (optional)
+  if specified, send a redirect
+  to this url on successful login.
 
 Results
 -------
@@ -64,8 +69,9 @@ retrieve info for currently logged in user.
 
 Response Body
 --------------
-json structure with user info
-{'is_anonymous': <boolean>, ['userid': <userid>], [name: <viewable identifier>], ...}
+json structure with user info::
+
+    {'is_anonymous': <boolean>, ['userid': <userid>], [name: <viewable identifier>], ...}
 
 Results
 -------
@@ -80,17 +86,22 @@ create a new user with the info specified
 body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg:
-{'username': <username>, 'password': <password>, 'password2': <password>}
+application/x-json, eg::
 
-x-www-form-urlencoded, eg:
-username=<username>&password=<password>&password2=<password>
+    {'username': <username>, 'password': <password>, 'password2': <password>}
+
+x-www-form-urlencoded, eg::
+
+    username=<username>&password=<password>&password2=<password>
 
 parameters:
 -----------
-username  - the username of the user to create
-password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user
+username
+    the username of the user to create
+password (optional) 
+    the password for the user, if specified must provide password2
+password2 (optional)
+    repeat the password for the user
 
 if password is not specified, the user will be unable to login via the username/password
 authentication method until a password is provided.
@@ -115,8 +126,9 @@ GET /user/<userid>
 ==================
 Response Body
 -------------
-json structure with user info
-{'userid': <userid>, name: <viewable identifier>, ...}
+json structure with user info::
+
+    {'userid': <userid>, name: <viewable identifier>, ...}
 
 Results
 -------
@@ -134,16 +146,20 @@ Request Body
 body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg:
-{'password': <password>, 'password2': <password>}
+application/x-json, eg::
 
-x-www-form-urlencoded, eg:
-password=<password>&password2=<password>
+    {'password': <password>, 'password2': <password>}
+
+x-www-form-urlencoded, eg::
+
+    password=<password>&password2=<password>
 
 parameters:
 -----------
-password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user
+password (optional)
+    the password for the user, if specified must provide password2
+password2 (optional)
+    repeat the password for the user
 
 if password is not specified, the user will be unable to login via the username/password
 authentication method until a password is provided.
@@ -164,16 +180,20 @@ Request Body
 body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg:
-{'password': <password>, 'password2': <password>}
+application/x-json, eg::
 
-x-www-form-urlencoded, eg:
-password=<password>&password2=<password>
+    {'password': <password>, 'password2': <password>}
+
+x-www-form-urlencoded, eg::
+
+    password=<password>&password2=<password>
 
 parameters:
 -----------
-password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user
+password (optional)
+    the password for the user, if specified must provide password2
+password2 (optional)
+    repeat the password for the user
 
 
 Results
@@ -197,7 +217,7 @@ Mailbox API
 
 Mailbox identifier <mbid>
 =========================
-^[a-z0-9_]{0, 128}$
+^[a-z0-9\_]{0, 128}$
 
 * it is all lowercase
 * letters, numbers and _
@@ -229,9 +249,9 @@ try to create a mailbox at the url specified.
 PUT Body
 --------
 body of post may contain a json document initial details about
-the mailbox of the form:
+the mailbox of the form::
 
-{'name': "The displayed title of the mailbox"}
+    {'name': "The displayed title of the mailbox"}
 
 Results
 --------
@@ -245,9 +265,9 @@ update a mailbox at the url specified.
 Request Body
 ------------
 body of post may contain a json document initial details about
-the mailbox of the form:
+the mailbox of the form::
 
-{'name': "The displayed title of the mailbox"}
+    {'name': "The displayed title of the mailbox"}
 
 Results
 --------
@@ -271,6 +291,7 @@ Messages API
 =================
 
 DELETE /<mbid>/items/<message_id>
+=================================
 
 delete a message in a mailbox
 
@@ -285,7 +306,7 @@ Subscriptions API
 =================
 
 GET /<mbid>/subscriptions.opml
-==============================
+===============================
 retrieve an OPML document representing all Feed type subscriptions
 
 Response Body
@@ -302,7 +323,7 @@ Request Body
 OPML feed list
 
 POST /<mbid>/subscriptions.opml
-==============================
+================================
 Add subscriptions in the OPML document found in the
 request body.
 
@@ -312,18 +333,21 @@ OPML feed list
 
 
 GET /<mbid>/subscriptions.json
-==========================
+=================================
 retrieve json structure representing subscriptions
 
 Response Body
 -------------
-of the form
-[{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}, ...]
-eg:
-[{'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
-  'type': 'feed',
-  'title': 'Example Feed',
-  'url': 'http://www.example.com/feeds/1'}, ...]
+of the form:: 
+
+    [{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}, ...]
+
+eg::
+    
+    [{'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
+      'type': 'feed',
+      'title': 'Example Feed',
+      'url': 'http://www.example.com/feeds/1'}, ...]
 
 Results
 --------
@@ -337,15 +361,18 @@ create a subscription in the mailbox 'mbid'
 Request Body
 ------------
 
-of the form
-{'type': <subscription type>, 'title': <title>, <... type specific>}
-eg:
-{'type': 'feed',
- 'title': 'Example Feed',
- 'url': 'http://www.example.com/feeds/1'}
+of the form::
+
+    {'type': <subscription type>, 'title': <title>, <... type specific>}
+
+eg::
+    
+    {'type': 'feed',
+     'title': 'Example Feed',
+     'url': 'http://www.example.com/feeds/1'}
 
 Response Body
--------------
+---------------
 {'slug': <new slug>}
 
 Results
@@ -368,13 +395,16 @@ get info about a particular subscription
 
 Response Body
 -------------
-of the form
-{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}
-eg:
-{'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
-  'type': 'feed',
-  'title': 'Example Feed',
-  'url': 'http://www.example.com/feeds/1'}
+of the form::
+
+    {'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}
+    
+eg::
+    
+    {'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
+      'type': 'feed',
+      'title': 'Example Feed',
+      'url': 'http://www.example.com/feeds/1'}
 
 Results
 --------
@@ -383,7 +413,7 @@ Results
 
 
 DELETE /<mbid>/subscriptions/<subid>
-===================================
+=====================================
 delete the subscription at the url given
 
 Results
