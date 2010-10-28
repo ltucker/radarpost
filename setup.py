@@ -35,8 +35,6 @@ setup(
     install_requires=[
         'couchdb', 
         'httplib2',
-        'gevent', 
-        # web
         'WebOb',
         'Jinja2',
         'WebTest',

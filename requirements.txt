@@ -1,2 +1,6 @@
 CouchDB
--e git+git://github.com/ltucker/feedparser.git#egg=feedparser
+httlib2
+WebOb
+Jinja2
+WebTest
+Beaker
