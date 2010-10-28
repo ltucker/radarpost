@@ -1,1 +1,1 @@
--e git://github.com/ltucker/radarpost.git
+-e git://github.com/ltucker/radarpost.git#egg=radarpost
