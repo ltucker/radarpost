@@ -2,7 +2,7 @@ import cgi
 from couchdb.http import ResourceConflict, ResourceNotFound
 from couchdb.mapping import *
 from datetime import datetime
-import feedparser
+from radarpost.lib import feedparser
 from hashlib import md5
 import re
 
