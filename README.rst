@@ -27,7 +27,7 @@ this will create a couchdb user in the _users database::
 
   $ radarpost create_user <yourname> --admin -Csrc/radarpost/radar.ini
   
-To see what else is available from the command line, try: 
+To see what else is available from the command line, try:: 
   
   $ radarpost help -Csrc/radarpost/radar.ini
   
