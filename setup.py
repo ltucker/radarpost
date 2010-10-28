@@ -38,7 +38,9 @@ setup(
         'WebOb',
         'Jinja2',
         'WebTest',
-        'Beaker'
+        'Beaker',
+	'Routes',
+	'CherryPy'
     ],
     dependency_links=[
     ],

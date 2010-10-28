@@ -1,6 +1,1 @@
-CouchDB
-httlib2
-WebOb
-Jinja2
-WebTest
-Beaker
+-e git://github.com/ltucker/radarpost.git
