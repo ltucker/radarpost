@@ -673,7 +673,7 @@ class TestMessageREST(RadarTestCase):
         """
         test deleting a message by DELETE
         """
-        from radarpost.mailbox import *
+        from radarpost.mailbox import Message
         
         message1 = Message(title='Message 1')
         message2 = Message(title='Message 2')
