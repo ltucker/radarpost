@@ -13,16 +13,16 @@ identifiers may vary from this identifier.
 
 HTTP Basic Auth
 ================
-Login credentials may be specified on a per-request basis using http basic 
+Login credentials may be specified on a per-request basis using http basic
 authentication. http://en.wikipedia.org/wiki/Basic_access_authentication
 
 
 POST /login
 ============
-login to a session and obtain a cookie.  body varies on 
+login to a session and obtain a cookie.  body varies on
 content-type header of submission. Accepts form submission or json.
 
-application/x-json, eg: 
+application/x-json, eg:
 {'username': <username>, 'password': <password>}
 
 x-www-form-urlencoded, eg:
@@ -30,15 +30,15 @@ username=<username>&password=<password>
 
 parameters:
 -----------
-username - the username of the user logging in 
+username - the username of the user logging in
 password - the password of the user logging in
-next     - (optional) if specified, send a redirect 
+next     - (optional) if specified, send a redirect
            to this url on successful login.
 
 Results
 -------
-Cookie identifying session will be set or re-set, 
-previous session (if any) will be invalidated. 
+Cookie identifying session will be set or re-set,
+previous session (if any) will be invalidated.
 
 200 - successful login (next_page not specified)
 302 - successful login (next_page specified)
@@ -48,12 +48,12 @@ previous session (if any) will be invalidated.
 POST /logout
 =============
 
-Logout current user and reset session. 
+Logout current user and reset session.
 body is ignored.
 
 Results
 --------
-previous session (if any) will be invalidated. 
+previous session (if any) will be invalidated.
 
 200 - successfully logged out
 
@@ -77,10 +77,10 @@ POST /user
 ==================================
 create a new user with the info specified
 
-body varies on content-type header of 
+body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg: 
+application/x-json, eg:
 {'username': <username>, 'password': <password>, 'password2': <password>}
 
 x-www-form-urlencoded, eg:
@@ -90,7 +90,7 @@ parameters:
 -----------
 username  - the username of the user to create
 password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user 
+password2 - (optional) repeat the password for the user
 
 if password is not specified, the user will be unable to login via the username/password
 authentication method until a password is provided.
@@ -129,12 +129,12 @@ PUT /user/<userid>
 ==================================
 create a new user with username=<userid> with the info specified
 
-Request Body 
+Request Body
 ------------
-body varies on content-type header of 
+body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg: 
+application/x-json, eg:
 {'password': <password>, 'password2': <password>}
 
 x-www-form-urlencoded, eg:
@@ -143,7 +143,7 @@ password=<password>&password2=<password>
 parameters:
 -----------
 password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user 
+password2 - (optional) repeat the password for the user
 
 if password is not specified, the user will be unable to login via the username/password
 authentication method until a password is provided.
@@ -159,12 +159,12 @@ POST /user/<userid>
 update the info of an existing user
 
 
-Request Body 
+Request Body
 ------------
-body varies on content-type header of 
+body varies on content-type header of
 submission. Accepts form submission or json.
 
-application/x-json, eg: 
+application/x-json, eg:
 {'password': <password>, 'password2': <password>}
 
 x-www-form-urlencoded, eg:
@@ -173,7 +173,7 @@ password=<password>&password2=<password>
 parameters:
 -----------
 password  - (optional) the password for the user, if specified must provide password2
-password2 - (optional) repeat the password for the user 
+password2 - (optional) repeat the password for the user
 
 
 Results
@@ -224,7 +224,7 @@ Results
 
 PUT /<mbid>
 ============
-try to create a mailbox at the url specified.  
+try to create a mailbox at the url specified.
 
 PUT Body
 --------
@@ -240,7 +240,7 @@ Results
 
 POST /<mbid>
 ============
-update a mailbox at the url specified.  
+update a mailbox at the url specified.
 
 Request Body
 ------------
@@ -290,23 +290,23 @@ retrieve an OPML document representing all Feed type subscriptions
 
 Response Body
 -------------
-OPML feed list 
+OPML feed list
 
 PUT /<mbid>/subscriptions.opml
 ==============================
 replace all subscriptions with only those in the OPML document found
-in the request body. 
+in the request body.
 
-Request Body 
+Request Body
 ------------
 OPML feed list
 
 POST /<mbid>/subscriptions.opml
 ==============================
-Add subscriptions in the OPML document found in the 
+Add subscriptions in the OPML document found in the
 request body.
 
-Request Body 
+Request Body
 ------------
 OPML feed list
 
@@ -317,12 +317,12 @@ retrieve json structure representing subscriptions
 
 Response Body
 -------------
-of the form 
+of the form
 [{'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}, ...]
-eg: 
-[{'slug': '7c43fb2bc54cec30c98edbf6a31ad535', 
-  'type': 'feed', 
-  'title': 'Example Feed', 
+eg:
+[{'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
+  'type': 'feed',
+  'title': 'Example Feed',
   'url': 'http://www.example.com/feeds/1'}, ...]
 
 Results
@@ -339,16 +339,16 @@ Request Body
 
 of the form
 {'type': <subscription type>, 'title': <title>, <... type specific>}
-eg: 
-{'type': 'feed', 
- 'title': 'Example Feed', 
+eg:
+{'type': 'feed',
+ 'title': 'Example Feed',
  'url': 'http://www.example.com/feeds/1'}
- 
+
 Response Body
 -------------
 {'slug': <new slug>}
- 
-Results 
+
+Results
 -------
 201 - the subscription was created
 
@@ -368,12 +368,12 @@ get info about a particular subscription
 
 Response Body
 -------------
-of the form 
+of the form
 {'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}
-eg: 
-{'slug': '7c43fb2bc54cec30c98edbf6a31ad535', 
-  'type': 'feed', 
-  'title': 'Example Feed', 
+eg:
+{'slug': '7c43fb2bc54cec30c98edbf6a31ad535',
+  'type': 'feed',
+  'title': 'Example Feed',
   'url': 'http://www.example.com/feeds/1'}
 
 Results
