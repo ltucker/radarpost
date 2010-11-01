@@ -51,6 +51,7 @@ class BasicCommand(object):
     def clean_options(self, options):
         kw = dict(options.__dict__)
         del kw['config_filenames']
+        del kw['log_file']
         return kw
         
     def run(self, args, options):
@@ -67,6 +68,8 @@ def get_basic_option_parser():
                       type="string", dest="config_filenames",
                       help="specify configuration files.  May be specified multipe times for overrides.",
                       default=[])
+    parser.add_option('--log', type="string", dest="log_file", default=None, 
+                      help="log output to the file specified.")
     return parser
 
 def find_command_type(command_name):
@@ -85,7 +88,6 @@ def print_unknown_command(command_name):
 def main(argv=None):
     if argv is None: 
         argv = sys.argv
-    logging.basicConfig(level=logging.INFO)
 
     if len(argv) == 1:
         print_basic_usage(argv)
@@ -132,6 +134,17 @@ def main(argv=None):
         print err.message
         sys.exit(1)
     
+    # setup basic logging
+    logger = logging.getLogger()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    if options.log_file is not None: 
+        handler = logging.FileHandler(options.log_file, mode="w")
+    else:
+        handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
     command = Command(config)
     try:
         command.run(args[1:], options)

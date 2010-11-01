@@ -83,6 +83,9 @@ class UpdateSubscriptionsCommand(MailboxesCommand):
             for sub in Subscription.view(mb, Subscription.by_type, include_docs=True):
                 try:
                     self._update_subscription(mb, sub)
+                except KeyboardInterrupt: 
+                    log.error("Exiting at user request...")
+                    return
                 except: 
                     log.error('%s: error updating subscription "%s" of type "%s": %s' % 
                         (mb.name, sub.id, sub.subscription_type, traceback.format_exc()))

@@ -1,3 +1,10 @@
+next link
+empty content is rendered as "None" in ui and feed
+display date in ui
+display source in ui
+user change password
+compact mailboxes command
+logfile / logging
 Visible RSS link
 OPML import from UI
 UI security pass
@@ -7,17 +14,17 @@ caching
 favicon
 delete item UI
 
+
 ===
 
 security testing
 create users UI
-doc sybtype plugins are shady, what about metaclass solution?
+doc subtype plugins are shady, what about metaclass solution?
 tagging + UI
 differentiated feeds
 split out users app
 require radar user role, ignore others?
 sync mailboxes / user db command
-shell
 debug server reload on file change
 plugin ordering and overriding
 openid

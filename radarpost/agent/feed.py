@@ -74,6 +74,8 @@ def _try_poll_feed(mb, sub, http, force):
     except InvalidFeedError:
         log.error("mailbox %s <= feed %s: parse error" % (mb.name, sub.url))
         return False, Subscription.STATUS_ERROR, 0
+    except KeyboardInterrupt:
+        raise
     except:
         log.error("mailbox %s <= feed %s: unexpected error: %s" % (mb.name, sub.url, traceback.format_exc()))
         return False, Subscription.STATUS_ERROR, 0
