@@ -7,6 +7,7 @@ from radarpost.feed import *
 from radarpost.mailbox import *
 from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, InvalidArguments
 from radarpost import plugins
+from time import sleep
 
 log = logging.getLogger(__name__)
 
@@ -168,3 +169,45 @@ class TrimCommand(MailboxesCommand):
             deletes = trim_mailbox(mb, delta)
             print "Deleted %d items from %s" % (deletes, mb.name)
 plugins.register(TrimCommand, COMMANDLINE_PLUGIN)
+
+class CompactCommand(MailboxesCommand):
+
+    command_name = 'compact'
+    description = 'sequentially compact mailbox databases and indices'
+
+
+    def __call__(self, mailboxes=None, update_all=False):
+        """
+        run couch db compaction on each mailbox and design doc
+        *sequentially*
+        """
+        for mb in self._get_mailboxes(mailboxes, get_all=update_all):
+            log.info('Compacting mailbox %s' % mb.name)
+            mb.compact() # compact the database 
+            info = mb.info()
+            while (info.get('compact_running', False) == True):
+                sleep(3)
+                info = mb.info()
+            log.info("Finished compacting mailbox %s" % mb.name)
+            
+            for ddoc in plugins.get(DESIGN_DOC_PLUGIN):
+                ddid = ddoc['_id'][len('_design/'):]
+                log.info("Compacting mailbox %s / view %s" % (mb.name, ddid))
+                try: 
+                    mb.compact(ddid)
+                
+                    # grab something like:
+                    # http://localhost:5984/databasename/_design/test/_info
+                    # Ack ! can't ask for this due to wierd quoting behavior of 
+                    # couchdb library -- use workaround
+                    status, headers, data = get_json_raw_url(mb, ['_design', ddid, '_info'])
+                    while data.get('view_index', {}).get('compact_running', False) == True: 
+                        sleep(3)
+                        status, headers, data = get_json_raw_url(mb, ['_design', ddid, '_info'])
+                    log.info("Finished compacting mailbox %s / view %s" % (mb.name, ddid))
+                except KeyboardInterrupt: 
+                    log.info("Exiting at user request.")
+                    return
+                except: 
+                    log.error("Error compacting mailbox %s / view %s: %s" % (mb.name, ddid, traceback.format_exc()))
+plugins.register(CompactCommand, COMMANDLINE_PLUGIN)

@@ -9,7 +9,7 @@ __all__ = ['Message', 'SourceInfo', 'Subscription', 'MailboxInfo',
            'MESSAGE_TYPE', 'SUBSCRIPTION_TYPE', 'MAILBOXINFO_TYPE', 
            'MAILBOXINFO_ID', 'DESIGN_DOC', 'DESIGN_DOC_PLUGIN', 
            'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes',
-           'trim_mailbox', 'refresh_views']
+           'trim_mailbox', 'refresh_views', 'get_json_raw_url']
 
 log = logging.getLogger(__name__)
 
@@ -218,6 +218,22 @@ def is_mailbox(db):
         # if it's not there, not a mailbox
         return False
 
+def get_json_raw_url(mb, path):
+    """
+    little workaround for skirting overzealous 
+    couchdb-python quoting behavior. 
+    """
+    from couchdb import http, json
+    session = mb.resource.session
+    creds = mb.resource.credentials
+    method = 'GET'
+    path = [mb.resource.url] + path
+    url = http.urljoin(*path)
+    status, headers, data = session.request(method, url, credentials=creds)
+    if 'application/json' in headers.get('content-type'):
+        data = json.decode(data.read())
+    return status, headers, data
+    
 #####################################################
 #
 # Helpful operations over mailboxes
