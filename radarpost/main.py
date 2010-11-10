@@ -86,6 +86,9 @@ def print_unknown_command(command_name):
 
 
 def main(argv=None):
+    import warnings
+    warnings.simplefilter("ignore")
+
     if argv is None: 
         argv = sys.argv
 
