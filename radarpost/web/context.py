@@ -1,5 +1,6 @@
 import base64
 from couchdb import Server, ResourceNotFound
+from hashlib import md5
 from jinja2 import Environment
 from jinja2.loaders import ChoiceLoader, PackageLoader
 import logging
@@ -11,6 +12,7 @@ from routes.route import Route
 import sys
 import traceback
 from webob import Response as HttpResponse
+from webob.etag import ETagMatcher
 
 from radarpost import plugins
 from radarpost.plugins import plugin
@@ -404,6 +406,38 @@ def serve_static_file(request, path):
         except: 
             continue
     return HttpResponse(status=404)
+
+###################
+
+def get_mailbox_etag(mailbox):
+    """
+    generate a string that uniquely identifies the current
+    state of the given mailbox.
+    """
+    info = mailbox.info()
+    # digest of "dbname@update_seq"
+    return md5("%s@%d" % (info['db_name'], info['update_seq'])).hexdigest()
+
+def check_etag(request, etag):
+    """
+    returns a response if the request contains an if-none-match 
+    header that matches the given etag.  returns None if the 
+    request should proceed as normal. 
+    """
+    
+    rtags = request.headers.get('if-none-match', None)
+    if rtags is None: 
+        return None
+    
+    # spec requires that only GET and HEAD may be used
+    if request.method not in ['GET', 'HEAD']: 
+        return HttpResponse(status=412) # precondition failed
+
+    matcher = ETagMatcher.parse(rtags)
+    if etag in matcher:
+        return HttpResponse(status=304, headers=[('etag', etag)])
+    else: 
+        return None
 
 ##########################################
 #

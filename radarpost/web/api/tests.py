@@ -5,7 +5,7 @@ from radarpost.mailbox import is_mailbox, MailboxInfo
 from radarpost.user import User
 from radarpost.web.context import get_couchdb_server, get_database_name
 from radarpost.web.context import get_mailbox, get_mailbox_slug
-from radarpost.web.tests import RadarTestCase
+from radarpost.web.tests import RadarTestCase        
 
 class TestSubscriptionAPI(RadarTestCase):
     
@@ -769,6 +769,34 @@ class TestMailboxREST(RadarTestCase):
         mb = self.create_test_mailbox(slug)
         c.head(mb_url, status=200)
 
+    def test_mailbox_head_etag(self):
+
+        mb = self.create_test_mailbox()
+        slug = get_mailbox_slug(self.config, mb.name)
+        url = self.url_for('mailbox_rest', mailbox_slug=slug)
+
+        c = self.get_test_app()
+
+        response = c.head(url, status=200)
+
+        assert 'etag' in response.headers
+        etag = response.headers['etag']
+
+        # check with wrong etag
+        response = c.head(url, headers=[('if-none-match', 'bogus')], status=200)
+
+        # with correct etag, we should get 304
+        c.head(url, headers=[('if-none-match', '"%s"' % etag)], status=304)
+
+        # also with * etag
+        c.head(url, headers=[('if-none-match', '*')], status=304)
+
+        # modifying the mailbox should invalidate the etag
+        mb.save({})
+        # with correct etag, we should get 304
+        c.head(url, headers=[('if-none-match', '"%s"' % etag)], status=200)
+
+
 
 class TestAtomFeeds(RadarTestCase):
     
@@ -839,7 +867,64 @@ class TestAtomFeeds(RadarTestCase):
             assert ent.authors[0].name == item.authors[0].name
             assert ent.links[0].href == item.links[0].href
             assert ent.content == item.content
+
+    def test_atom_feed_etag(self):
+
+        from datetime import datetime, timedelta
+        from radarpost.feed import parse as parse_feed, \
+            FeedSubscription, create_atom_entry, AtomEntry
+        from random import shuffle
         
+        c = self.get_test_app()
+        slug = self.TEST_MAILBOX_SLUG
+        mb = self.create_test_mailbox(slug)
+        feed_url = self.url_for('atom_feed', mailbox_slug=slug)
+
+        # there should currently be an empty feed 
+        response = c.get(feed_url, status=200)
+        assert 'etag' in response.headers
+        etag = response.headers['etag']
+        ff = parse_feed(response.body, feed_url)
+        assert len(ff.entries) == 0
+        
+        # should get 304 if we ask with the etag
+        c.get(feed_url, headers=[('if-none-match', '"%s"' % etag)], status=304)
+
+        # generate some items
+        items = []
+        base_date = datetime(1999, 12, 29, 0)
+        delta = timedelta(seconds=10)
+        for i in range(2):
+            item_id = 'TestItem%d' % i
+            item = AtomEntry(
+                fingerprint = item_id,
+                entry_id = item_id,
+                timestamp = base_date + i*delta,
+                title = 'Test Item %d' % i,
+                authors = [{'name': 'Joe'}],
+                links = [{'href': 'http://www.example.org/%d' % i}],
+                content = "Blah Blah %d" % i,
+            )
+            items.append(item)
+        
+        items[0].store(mb)
+            
+        # the etag should be invalidated and replaced with a new etag
+        res = c.get(feed_url, headers=[('if-none-match', '"%s"' % etag)], status=200)
+        assert 'etag' in res.headers
+        etag = res.headers['etag']
+        # should get 304 with new etag
+        c.get(feed_url, headers=[('if-none-match', '"%s"' % etag)], status=304)
+
+        # store another item, again the etag should be invalidated and 
+        # replaced with a new etag
+        items[1].store(mb)
+        res = c.get(feed_url, headers=[('if-none-match', '\"%s"' % etag)], status=200)
+        assert 'etag' in res.headers
+        etag = res.headers['etag']
+        # should get 304 with new etag
+        c.get(feed_url, headers=[('if-none-match', '"%s"' % etag)], status=304)        
+
 
 class TestOPML(RadarTestCase):
     

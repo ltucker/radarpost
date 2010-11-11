@@ -1,6 +1,5 @@
 OPML import from UI
 UI security pass
-caching
 favicon
 delete item UI
 sync mailboxes / user db command
@@ -26,3 +25,7 @@ basic filtering
 paver / installation
 split framework
 i18n
+
+
+=== 
+? head method supported on feeds?

@@ -15,7 +15,7 @@ from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
 from radarpost.user import User, ROLE_ADMIN
 from radarpost.user import PERM_CREATE, PERM_READ, PERM_UPDATE, PERM_DELETE
 from radarpost.user import PERM_CREATE_MAILBOX
-from radarpost.web.context import TemplateContext
+from radarpost.web.context import TemplateContext, check_etag, get_mailbox_etag
 
 ################################################
 #
@@ -232,7 +232,15 @@ def mailbox_exists(request, mailbox_slug):
     mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
-    return HttpResponse()
+    
+    etag = get_mailbox_etag(mb)
+    cached = check_etag(request, etag)
+    if cached is not None:
+        return cached
+    
+    res = HttpResponse(content_type="text/html")
+    res.headers['etag'] = etag
+    return res
 
 def create_mailbox(request, mailbox_slug):
     """
@@ -358,6 +366,11 @@ def atom_feed_latest(request, mailbox_slug):
     if not ctx.user.has_perm(PERM_READ, mb):
         return HttpResponse(status=401)
 
+    etag = get_mailbox_etag(mb)
+    cached = check_etag(request, etag)
+    if cached is not None: 
+        return cached
+
     # number of entries
     try:
         limit = min(int(request.GET.get('limit', DEFAULT_ATOM_ENTRIES)), 
@@ -399,6 +412,8 @@ def _render_atom_feed(request, mb, messages):
     res = HttpResponse(content_type='application/atom+xml')
     res.charset = 'utf-8'
     res.unicode_body = request.context.render('radar/atom/atom.xml', template_info)
+    res.headers['etag'] = get_mailbox_etag(mb)
+    
     return res
 
 
@@ -781,3 +796,6 @@ def _get_params_by_ct(request):
         return json.loads(request.body)
     else:
         return None
+
+
+

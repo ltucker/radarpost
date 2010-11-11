@@ -11,7 +11,11 @@ from radarpost.web.context import get_mailbox
 __all__ = ['RadarTestCase']
 
 class RadarTestCase(TestCase):
-
+    """
+    helpful base class for testing web interfaces 
+    of radarpost
+    """
+    
     TEST_MAILBOX_SLUG = '__rp_test_mailbox'
     TEST_USERS_DB = 'rp_test_users'
     TEST_ADMIN_USER = 'rp_test_admin'
