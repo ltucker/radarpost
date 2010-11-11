@@ -741,7 +741,13 @@ class TestMailboxREST(RadarTestCase):
 
         mbinfo = MailboxInfo.get(mb)
         assert mbinfo.title == new_title
-        
+
+        c.post(mb_url, 'goobldyBlar{z!', 
+               content_type="application/json", status=400)
+
+        mbinfo = MailboxInfo.get(mb)
+        assert mbinfo.title == new_title
+
         
     def test_mailbox_delete(self):
         """

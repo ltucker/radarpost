@@ -285,7 +285,11 @@ def update_mailbox(request, mailbox_slug):
         if not ctx.user.has_perm(PERM_UPDATE, mb):
             return HttpResponse(status=401)
 
-        info = _mailbox_info_json(request)
+        try:
+            info = _mailbox_info_json(request)
+        except: 
+            return HttpResponse(status=400)
+
         mbinfo = MailboxInfo.get(mb)
         try:
             mbinfo.user_update(info)
