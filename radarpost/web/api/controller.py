@@ -324,7 +324,7 @@ def delete_mailbox(request, mailbox_slug):
 #
 ###############################################
 
-ATOM_RENDERER_PLUGIN = 'radarpost.web.radar_ui.atom_renderer'
+ATOM_RENDERER_PLUGIN = 'radarpost.web.api.atom_renderer'
 """
 This slot represents plugins that can render a Message
 into an Atom entry.  

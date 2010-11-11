@@ -34,6 +34,6 @@ def add_routes(mapper):
                 conditions={'method': ['GET']})
 
     mapper.connect("view_mailbox", "/{mailbox_slug}",
-                   action="view_mailbox", controller=ui,
+                   action="view_mailbox_latest", controller=ui,
                    requirements=slug_req,
                    conditions={'method': ['GET']})

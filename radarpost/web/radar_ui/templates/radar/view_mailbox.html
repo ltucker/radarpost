@@ -9,54 +9,13 @@ var mailbox_slug = "{{ mailbox_slug }}";
 
 {% block content %}
 <div class="hfeed">
-  {% for item in items %}
-
-
-  <div class="hentry">
-    <h3><a href="{{item.permalink()}}" rel="bookmark" class="entry-title">{{ item.title }}</a></h3>
-
-    {% if item.authors.__len__() %}
-    <span class="authors">By 
-        {% for author in item.authors %}
-          {% if author.name %}
-          <span class="entry-author vcard">
-            {% if author.uri %}
-            <a href="{{author.uri}}" class="fn url">{{author.name}}</a>
-            {% else %}
-            <span class="fn">{{author.name}}</span>
-            {% endif %}
-          </span>
-          {% else %}
-          Unknown Author
-          {% endif %}
-        {% endfor %}
-    </span>
-    {% endif %}
-
-  
-    <abbr class="updated" title="{{item.updated|rfc3339}}">{{item.updated|pretty_date(TIME_ZONE)}}</abbr>
-
-    <span class="source">
-      From {{item.source.title}}
-    </span>
-  
-    
-    {% if item.content %}
-    <div class="entry-content">
-      {% autoescape false %}
-      {{ item.content }}
-      {% endautoescape %}
-    </div>
-    {% elif item.summary %}
-    <div class="entry-summary">
-      {% autoescape false %}
-      {{ item.summary }}
-      {% endautoescape %}
-    </div>
-    {% endif %}
-
-    <div class="entry-footer"></div>
-  </div>
+  {% for render_entry in entries %}
+  {% autoescape false %}
+  {{ render_entry() }}
+  {% endautoescape %}
   {% endfor %}
 </div>
+{% if next_link %}
+<a class="more-link" href="{{next_link}}">More</a>
+{% endif %}
 {% endblock %}

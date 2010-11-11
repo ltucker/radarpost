@@ -1,7 +1,9 @@
+from urllib import quote_plus
 from webob import Response as HttpResponse
 from radarpost.mailbox import MailboxInfo, Subscription, Message, MailboxInfo
 from radarpost.web.context import TemplateContext, render_to_response
-
+from radarpost import plugins
+from radarpost.plugins import plugin
 
 ######################################
 #
@@ -67,26 +69,100 @@ def create_mailbox(request):
     return render_to_response('radar/create_mailbox.html', 
                               TemplateContext(request, {}))
 
-def view_mailbox(request, mailbox_slug):
+def view_mailbox_latest(request, mailbox_slug):
     ctx = request.context
     mb = ctx.get_mailbox(mailbox_slug)
     if mb is None:
         return HttpResponse(status=404)
 
-    params = {'limit': 10, 
+    start = request.GET.get('start', None)
+    limit = 10
+    params = {'limit': limit + 1, 
               'include_docs': True,
               'reduce': False,
               'descending': True}
+    if start is not None:
+        params['startkey'] = start
 
-    info = MailboxInfo.get(mb)
-    items = Message.view(mb, Message.by_timestamp, **params) 
+    messages = []
+    next_key = None
+    for i, row in enumerate(mb.view(Message.by_timestamp, **params)):
+        if i == limit:
+            next_key = row.key
+        else:
+            messages.append(Message.wrap(row.doc))
 
+    if next_key:
+        next_params = {'start': next_key}
+    else:
+        next_params = None
+    
+    return _render_messages(request, mb, messages, next_params=next_params)
+
+def _render_messages(request, mailbox, messages, next_params=None):
+    ctx = request.context
+    entries = []
+    for message in messages:
+        renderer = _get_hatom_renderer(message, request)
+        if renderer is not None:
+            entries.append(renderer)
+
+    info = MailboxInfo.get(mailbox)
+    mailbox_slug = request.context.get_mailbox_slug(mailbox.name)
+    
     ctx = {}
     ctx['mailbox_slug'] = mailbox_slug
     ctx['mailbox_title'] = info.title or mailbox_slug
-    ctx['items'] = items
+    ctx['entries'] = entries
+    
+    if next_params:
+        q = dict(request.GET)
+        q.update(next_params)
+        qs = ''
+        for k, v in q.items():
+            qs += '&%s=%s' % (quote_plus(k), quote_plus(v))
+        next_link = request.path + '?' + qs[1:]    
+        
+        ctx['next_link'] = next_link
+
     return render_to_response('radar/view_mailbox.html', 
                               TemplateContext(request, ctx))
+
+
+HATOM_RENDERER_PLUGIN = 'radarpost.web.radar_ui.hatom_renderer'
+def _get_hatom_renderer(message, request):
+    for renderer in plugins.get(HATOM_RENDERER_PLUGIN):
+        r = renderer(message, request)
+        if r is not None:
+            return r
+    return None
+
+
+@plugin(HATOM_RENDERER_PLUGIN)
+def _render_from_type_template(message, request):
+    template = _hatom_type_template(message, request)
+    if template is None:
+        return None
+    
+    def render_entry():
+        return template.render(TemplateContext(request, 
+                               {'message': message}))
+    return render_entry
+
+def _hatom_type_template(message, request, force_type=None):
+    """
+    renders an atom entry template
+    in radar/hatom/entry/ according to the message_type
+    field of the message.
+    """
+    if force_type is None: 
+        mtype =  message.message_type
+    else: 
+        mtype = force_type
+    
+    template_name = 'radar/hatom/entry/%s.html' % mtype
+    return request.context.get_template(template_name)
+
 
 def manage_subscriptions(request, mailbox_slug):
     ctx = request.context

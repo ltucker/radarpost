@@ -1,0 +1,45 @@
+<div class="hentry">
+  <h3><a href="{{message.permalink()}}" rel="bookmark" class="entry-title">{{ message.title }}</a></h3>
+
+  {% if message.authors.__len__() %}
+  <span class="authors">By 
+      {% for author in message.authors %}
+        {% if author.name %}
+        <span class="entry-author vcard">
+          {% if author.uri %}
+          <a href="{{author.uri}}" class="fn url">{{author.name}}</a>
+          {% else %}
+          <span class="fn">{{author.name}}</span>
+          {% endif %}
+        </span>
+        {% else %}
+        Unknown Author
+        {% endif %}
+      {% endfor %}
+  </span>
+  {% endif %}
+
+
+  <abbr class="updated" title="{{message.updated|rfc3339}}">{{message.updated|pretty_date(TIME_ZONE)}}</abbr>
+
+  <span class="source">
+    From {{message.source.title}}
+  </span>
+
+  
+  {% if message.content %}
+  <div class="entry-content">
+    {% autoescape false %}
+    {{ message.content }}
+    {% endautoescape %}
+  </div>
+  {% elif message.summary %}
+  <div class="entry-summary">
+    {% autoescape false %}
+    {{ message.summary }}
+    {% endautoescape %}
+  </div>
+  {% endif %}
+
+  <div class="entry-footer"></div>
+</div>
