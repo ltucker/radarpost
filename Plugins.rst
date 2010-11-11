@@ -215,3 +215,29 @@ def _render_empty(message, request):
     def render(): 
         return "<entry></entry>"
     return render
+
+=======================================
+HAtom Renderer Plugin
+=======================================
+
+slot: web.radar_ui.controller.HATOM_RENDERER_PLUGIN
+
+This slot represents plugins that can render a Message
+into an HAtom entry (html)
+
+Most types can be handled by just creating a template called 
+radar/hatom/entry/<message_type>.html
+
+Specifically, the slot is filled with callables that accept a Message 
+and a Request, and produce a zero argument callable returning the html
+representing the Message.  If the Message cannot be handled,
+None should be returned. eg: 
+
+@plugin(HATOM_RENDERER_PLUGIN)
+def _render_empty(message, request):
+    if message.message_type != 'empty':
+        return None
+
+    def render(): 
+        return '<div class="hentry"></div>'
+    return render
