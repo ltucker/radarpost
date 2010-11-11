@@ -5,6 +5,7 @@ from jinja2.loaders import ChoiceLoader, PackageLoader
 import logging
 import mimetypes
 import os
+from pytz import timezone, utc
 import routes
 from routes.route import Route
 import sys
@@ -285,6 +286,14 @@ def rfc3339(date):
             hours, mins = divmod(off.seconds/60, 60) 
             tz_str = "%+03d:%02d" % (hours, mins)
     return date.strftime("%Y-%m-%dT%H:%M:%S") + tz_str
+    
+@plugin(TEMPLATE_FILTERS)
+def pretty_date(date, tz):
+    if date.tzinfo is None: 
+        date = date.replace(tzinfo=utc)
+    loc = date.astimezone(timezone(tz))
+    fmt = "%a, %b %d %Y at %I:%M%p %Z"
+    return loc.strftime(fmt)
 
 @plugin(TEMPLATE_CONTEXT_PROCESSORS)
 def expose_request(request, ctx):
@@ -300,6 +309,15 @@ def expose_url_lookup(request, ctx):
     in templates.
     """
     ctx['url_for'] = request.context.url_for
+
+
+@plugin(TEMPLATE_CONTEXT_PROCESSORS)
+def expose_timezone(request, ctx):
+    """
+    exposes the variable 'TIME_ZONE' with the name
+    of the configured time zone to templates.
+    """
+    ctx['TIME_ZONE'] = request.context.config['timezone']
 
 #####################################
 # URL Routing & Static Files

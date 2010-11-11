@@ -788,8 +788,8 @@ class TestAtomFeeds(RadarTestCase):
         
     def test_atom_feed_entries_ordered(self):
         from datetime import datetime, timedelta
-        from radarpost.feed import parse as parse_feed, BasicNewsItem, \
-            FeedSubscription, create_basic_news_item
+        from radarpost.feed import parse as parse_feed, \
+            FeedSubscription, create_atom_entry, AtomEntry
         from random import shuffle
         
         c = self.get_test_app()
@@ -809,13 +809,13 @@ class TestAtomFeeds(RadarTestCase):
         delta = timedelta(seconds=10)
         for i in range(10):
             item_id = 'TestItem%d' % i
-            item = BasicNewsItem(
+            item = AtomEntry(
                 fingerprint = item_id,
-                item_id = item_id,
+                entry_id = item_id,
                 timestamp = base_date + i*delta,
                 title = 'Test Item %d' % i,
-                author = 'Joe',
-                link = 'http://www.example.org/%d' % i,
+                authors = [{'name': 'Joe'}],
+                links = [{'href': 'http://www.example.org/%d' % i}],
                 content = "Blah Blah %d" % i,
             )
             items.append(item)
@@ -833,11 +833,11 @@ class TestAtomFeeds(RadarTestCase):
         
         fake_sub = FeedSubscription(url=feed_url)
         for i, item in enumerate(items):
-            ent = create_basic_news_item(ff.entries[i], ff, fake_sub)
+            ent = create_atom_entry(ff.entries[i], ff, fake_sub)
             #assert ent.item_id == item.item_id
             assert ent.timestamp == item.timestamp
-            assert ent.author == item.author
-            assert ent.link == item.link
+            assert ent.authors[0].name == item.authors[0].name
+            assert ent.links[0].href == item.links[0].href
             assert ent.content == item.content
         
 

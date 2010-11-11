@@ -1,0 +1,93 @@
+<entry>
+    {% block entry_body %}
+    <id>{{message.entry_id}}</id>
+    <title type="html">{{message.title}}</title>
+    <updated>{{ message.updated|rfc3339 }}</updated>
+    {% if message.published %}
+    <published>{{ message.published|rfc3339 }}</published>
+    {% endif %}
+    
+    {% for link in message.links %}
+    <link rel="{{ link.rel }}" href="{{ link.href }}" {% if link.title %}title="{{ link.title}}"{% endif %}/>
+    {% endfor %}
+    
+    {% for cat in message.categories %}
+    <category {% if cat.term %}term="{{cat.term}}" {% endif %} {% if cat.label %}label="{{cat.label}}" {% endif %} {% if cat.scheme %}scheme="{{cat.scheme}}" {% endif %} />
+    {% endfor %}
+    
+    {% for author in message.authors %}
+    <author>
+      {% if author.name %}
+      <name>{{ author.name }}</name>
+      {% endif %}
+      {% if author.email %}
+      <email>{{ author.email }}</email>
+      {% endif %}
+      {% if author.uri %}
+      <uri>{{ author.uri }}</uri>
+      {% endif %}
+    </author>
+    {% endfor %}
+    
+    {% if message.authors.__len__() == 0 %}
+    <!-- author is a requirement, but none was specified. -->
+    <author>
+        <name>Unknown</name>
+    </author>
+    {% endif %}
+    
+    {% for author in message.contributors %}
+    <contributor>
+      {% if author.name %}
+      <name>{{ author.name }}</name>
+      {% endif %}
+      {% if author.email %}
+      <email>{{ author.email }}</email>
+      {% endif %}
+      {% if author.uri %}
+      <uri>{{ author.uri }}</uri>
+      {% endif %}
+    </contributor>
+    {% endfor %}
+
+    
+    <source>
+        {% if message.source.id %}
+        <id>{{message.source.id}}</id>
+        {% endif %}
+        
+        {% if message.source.title %}
+        <title type="html">{{message.source.title}}</title>
+        {% endif %}
+        
+        {% for link in message.source.links %}
+        <link rel="{{ link.rel }}" href="{{ link.href }}" {% if link.title %}title="{{ link.title}}"{% endif %}/>
+        {% endfor %}
+        
+        {% if message.source.updated %}
+        <updated>{{message.source.updated|rfc3339}}</updated>
+        {% endif %}
+
+    </source>
+
+    {% if message.summary %}
+    <summary type="html">
+        <![CDATA[{% autoescape false %}{{ message.summary }}{% endautoescape %}]]>    
+    </summary>
+    {% endif %}
+    
+    {% if message.content %}
+    <content type="html">
+        <![CDATA[{% autoescape false %}{{ message.content }}{% endautoescape %}]]>    
+    </content>
+    {% endif %}
+    
+    {% if message.rights %}
+    <rights type="html">
+        <![CDATA[{% autoescape false %}{{ message.rights }}{% endautoescape %}]]>    
+    </rights>
+
+    {% endif %}
+
+    {% endblock %}
+</entry>

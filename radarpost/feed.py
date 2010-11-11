@@ -9,43 +9,15 @@ import re
 from radarpost.mailbox import Message, SourceInfo, Subscription, DESIGN_DOC_PLUGIN
 from radarpost import plugins
 
-__all__ = ['FEED_SUBSCRIPTION_TYPE', 'BASICNEWSITEM_TYPE', 
-           'BasicNewsItem', 'FeedSubscription', 'parse',
-           'InvalidFeedError']
+__all__ = ['FEED_SUBSCRIPTION_TYPE',
+           'FeedSubscription', 'parse', 'InvalidFeedError',
+           'ATOMENTRY_TYPE', 'AtomEntry']
 
 FEED_SUBSCRIPTION_TYPE = 'feed'
-BASICNEWSITEM_TYPE = 'basic_news_item'
 
 # document subclasses for news feeds 
 # used inside a mailbox
 
-
-class FeedSourceInfo(SourceInfo):
-    self_link = TextField()
-    alt_link = TextField()
-
-class BasicNewsItem(Message):
-    """
-    Represents a general RSS news item
-    from a feed as delivered to a Mailbox.
-    """
-    message_type = TextField(default=BASICNEWSITEM_TYPE)
-    
-    source = DictField(FeedSourceInfo)
-
-    item_id = TextField()
-    title = TextField()
-    author = TextField()
-    link = TextField()
-    content = TextField()
-
-    user_updatable = ('title', 'author', 'link', 'content')
-
-@plugins.plugin(Message.SUBTYPE_PLUGIN)
-def create_basicnewsitem(typename):
-    if typename == BASICNEWSITEM_TYPE: 
-        return BasicNewsItem()
-    return None
 
 class FeedSubscription(Subscription):
     """
@@ -72,71 +44,208 @@ def create_feedsub(typename):
     return None
 
 
-#####################################
+#######################################
 #
-# update helpers
+# Atom Types
 #
-#####################################
+#######################################
 
-def create_basic_news_item(entry, feed, subscription, news_item=None):
-    """
-    extract the information needed to create a BasicNewsItem 
-    from the feed entry given.
-    """
+ATOMENTRY_TYPE = 'atom_entry'
 
-    if news_item is None:
-        news_item = BasicNewsItem()
+# document subclasses for news feeds 
+# used inside a mailbox
+
+# Atom Logical Types
+
+class Link(Mapping):
+    rel = TextField()
+    href = TextField()
+    type = TextField() 
+    title = TextField()
+
+class Category(Mapping):
+    term = TextField() # required
+    scheme = TextField()
+    label = TextField()
+
+class Person(Mapping):
+    name = TextField()
+    uri = TextField()
+    email = TextField()
+
+class SourceFeedInfo(SourceInfo):
+    # additional info about the original 
+    # feed that this item came from.
+    id = TextField()
+    title = TextField()
+    links = ListField(DictField(Link))
+    updated = DateTimeField()
+
+class AtomEntry(Message):
+
+    message_type = TextField(default=ATOMENTRY_TYPE)
+
+    # required elements
+    entry_id = TextField() # id has different meaning
+    title = TextField()
+
+    # updated is an alias for timestamp
+    def _set_updated(self, val): 
+        self.timestamp = val
+    def _get_updated(self):
+        return self.timestamp
+    updated = property(_get_updated, _set_updated)
+
+    # recommended 
+    authors = ListField(DictField(Person))
+    content = TextField()
+    summary = TextField()
+    links = ListField(DictField(Link))
+
+    # optional
+    categories = ListField(DictField(Category))
+    contributors = ListField(DictField(Person))
+    published = DateTimeField()
+    source = DictField(SourceFeedInfo)
+    rights = TextField()
+
+    def permalink(self):
+        for link in self.links: 
+            if link.rel == 'alternate' and 'href' in link: 
+                return link.href
+        return None
+
+@plugins.plugin(Message.SUBTYPE_PLUGIN)
+def create_atomentry(typename):
+    if typename == ATOMENTRY_TYPE: 
+        return AtomEntry()
+    return None
+
+def _copy_fields(ob, fields):
+    dc = {}
+    for f in fields: 
+        if f in ob: 
+            dc[f] = ob[f]
+    return dc
+
+def _make_person(ob):
+    return Person.wrap(_copy_fields(ob, ['name', 'uri', 'email']))
+
+def _make_link(ob):
+    return Link.wrap(_copy_fields(ob, ['rel', 'href', 'type', 'title']))
+
+def _make_cat(ob):
+    return Category.wrap(_copy_fields(ob, ['term', 'scheme', 'label']))
+
+HTML_TYPES = ['text/html', 'application/xhtml+xml']    
+def _make_text(content, strip=False):
+    if content is None:
+        return ''
+    if content.type in HTML_TYPES:
+        if strip: 
+            return strip_tags(content.value)
+        else:
+            return content.value
+    else:
+        # tags are stripped from text. although technically 
+        # these could contain literal text that looks like 
+        # a tag or character reference, they are more
+        # often than not a mistake.
+        return cgi.escape(strip_tags(content.value))
+
+def create_atom_entry(entry, feed, subscription, message=None):
+    if message is None:
+        message = AtomEntry()
 
     # the guid of a basic news item is the 
-    # md5 digest of the item's id and the source's url.
+    # md5 digest of the item's id and the subscription's url.
     guid = md5()
     guid.update(entry.id)
     guid.update(subscription.url)
     guid = guid.hexdigest()
 
-    news_item.id = guid
-    news_item.item_id = entry.id
-    news_item.timestamp = find_best_timestamp(entry) or datetime.utcnow()
-    news_item.title = stripped_content(entry.get('title_detail', None), 128)
-    news_item.author = trimmed(find_author_name(entry), 128)
-    news_item.link = find_best_permalink(entry)
+    message.id = guid
+    message.entry_id = entry.id
 
-    news_item.source.subscription_id = subscription.id
-    news_item.source.subscription_type = subscription.subscription_type
-    news_item.source.title = subscription.title or \
-                             stripped_content(feed.feed.get('title_detail', None), 128) or \
-                             subscription.url[0:128]
-    for link in feed.feed.get('links', []):
-        if link.rel == 'alternate': 
-            news_item.source.alt_link = link.href
-        if link.rel == 'self': 
-            news_item.source.self_link = link.href
+    if 'title_detail' in entry:
+        message.title = _make_text(entry.title_detail, strip=True)
 
-    content = entry.get('content')
-    if content is None or len(content) == 0: 
-        content = entry.get('summary_detail', None)
+    if 'updated_parsed' in entry:
+        ts = entry.get('updated_parsed')
+        ts = datetime(*ts[0:6])
+        message.updated = ts
+
+    if 'published_parsed' in entry: 
+        ts = entry.get('published_parsed')
+        ts = datetime(*ts[0:6])
+        message.published = ts
+
+    # XXX ack, feedparser only supports a single 
+    # author element X_X
+    if 'author_detail' in entry:
+        message.authors.append(_make_person(entry.author_detail))
+
+    if 'contributors' in entry: 
+        for contrib in entry.contributors:
+            message.contributors.append(_make_person(contrib))
+
+    if 'content' in entry and len(entry.content):
+        message.content = _make_text(entry.content[0])
+
+    if 'summary_detail' in entry: 
+        message.summary = _make_text(entry.summary_detail)
+
+    if 'links' in entry: 
+        for link in entry.links: 
+            message.links.append(_make_link(link))
+
+    if 'tags' in entry:
+        for tag in entry.tags:
+            message.categories.append(_make_cat(tag))
+
+    if 'rights_detail' in entry: 
+        message.rights = _make_text(entry.rights_detail)
+
+    message.source.subscription_id = subscription.id
+    message.source.subscription_type = subscription.subscription_type
+    message.source.subscription_title = subscription.title
+
+    # retain source information
+    if ('source' in entry and 
+        'id' in entry.source and 
+        'title' in entry.source and 
+        'updated' in entry.source):
+        src = entry.source
     else:
-        content = content[0]
-    
-    if content is not None:
-        news_item.content = content.value
+        src = feed.feed
 
-    # a basic news item's fingerprint is the md5 
-    # digest of its utf-8 encoding.
-    if news_item.content:
+    if 'title_detail' in src:
+        message.source.title = _make_text(src.title_detail, strip=True)
+    if 'links' in src: 
+        for link in src.links: 
+            message.source.links.append(_make_link(link))
+    if 'id' in src: 
+        message.source.id = src.id
+
+    if 'updated_parsed' in src:
+        ts = src.updated_parsed 
+        ts = datetime(*ts[0:6])
+        message.source.updated = ts
+
+    if message.content:
         fingerprint = md5()
-        fingerprint.update(news_item.content.encode('utf-8'))
+        fingerprint.update(message.content.encode('utf-8'))
         fingerprint = fingerprint.hexdigest()
     else: 
         fingerprint = guid
 
-    news_item.fingerprint = fingerprint
+    message.fingerprint = fingerprint
 
-    return news_item
+    return message
 
 
 def update_feed_subscription(mailbox, subscription, feed, full_update=True,
-                             message_processor=create_basic_news_item,
+                             message_processor=create_atom_entry,
                              message_filter=None,
                              subscription_delta=None):
     """
@@ -274,11 +383,24 @@ def parse(content, url):
 
     return ff
 
-class FakeLink(object): 
+class FakeLink(dict): 
     def __init__(self, rel, href, title): 
-        self.rel = rel
-        self.href = href
-        self.title = title
+        self['rel'] = rel
+        self['href'] = href
+        self['title'] = title
+
+    @property
+    def rel(self):
+        return self['rel']
+
+    @property
+    def href(self):
+        return self['href']
+
+    @property
+    def title(self):
+        return self['title']
+    
 
 def find_best_entry_id(entry):
     if entry.has_key('id'):
@@ -296,96 +418,6 @@ def find_best_entry_id(entry):
                 md5(entry['content'][0]['value']).hexdigest())
     else:
         return None
-
-
-def find_best_timestamp(thing, default=None):
-    """
-    return the latest timestamp specified as a datetime. 
-    timestamps are returned in this preference order: 
-    updated, published, created
-    """
-    ts = thing.get('updated_parsed', None)
-    if ts is None:
-        ts = thing.get('published_parsed', None)
-    if ts is None:
-        ts = thing.get('created_parsed', None)
-
-    if ts is not None:
-        return datetime(*ts[0:6])
-    else:
-        return default
-
-def find_best_permalink(entry, default=''):
-    links = entry.get('links', [])
-    for link in links:
-        rel = link.get('rel', '')
-        href = link.get('href', '')
-        if href and rel and rel == 'alternate':
-            return href
-    return default
-
-def find_author_name(entry, default=''):
-    if 'author_detail' in entry and 'name' in entry.author_detail and entry.author_detail.name:
-        return entry.author_detail.name
-    elif 'author' in entry and entry.author:
-        return cgi.escape(entry.author)
-    else:
-        return default
-
-def find_source_url(e, default=''):
-    links = e.get('links', [])
-    for link in links:
-        rel = link.get('rel', '')
-        href = link.get('href', '')
-        if href and rel and rel == 'self':
-            return href
-    return default
-
-
-HTML_TYPES = ['text/html', 'application/xhtml+xml']
-def as_html(content):
-    if content is None:
-        return ''
-    if content.type in HTML_TYPES:
-        return content.value
-    else:
-        return cgi.escape(content.value)
-
-def stripped_content(content, maxlen=None):
-    """
-    return the content node given stripped of
-    html tags and length limited as specified.
-
-    if the content is longer than maxlen, the 
-    string is truncated and the final three
-    characters of the truncated string are
-    replaced with ...
-    """
-    if content is None:
-        return ''
-
-    if content.type in HTML_TYPES:
-        try:
-            outstr = strip_tags(content.value)
-        except:
-            # didn't parse, just escape it (gigo)... 
-            outstr = cgi.escape(content.value)
-    else:
-        outstr = cgi.escape(content.value)
-
-    if maxlen:
-        return trimmed(outstr, maxlen)
-    else:
-        return outstr
-
-def trimmed(text, maxlen):
-    if text is None:
-        return ''
-    if len(text) > maxlen:
-        return text[0:maxlen-3] + '...'
-    else:
-        return text
-
 
 DESIGN_DOC = {
     '_id': '_design/feed',
@@ -405,6 +437,17 @@ DESIGN_DOC = {
     }
 }
 plugins.register(DESIGN_DOC, DESIGN_DOC_PLUGIN)
+
+
+
+def trimmed(text, maxlen):
+    if text is None:
+        return ''
+    if len(text) > maxlen:
+        return text[0:maxlen-3] + '...'
+    else:
+        return text
+
 
 ENTITIES = {
     'quot' : 34, 'amp' : 38, 'apos' : 39, 'lt' : 60, 'gt' : 62, 
@@ -466,7 +509,7 @@ class MLStripper(HTMLParser.HTMLParser):
             name = name[1:]
         else: 
             base = 10
-            
+
         try: 
             code = int(name, base=base)
             self._text.append(unichr(code))
@@ -492,6 +535,9 @@ class MLStripper(HTMLParser.HTMLParser):
         return text
 
 def strip_tags(html):
-    stripper = MLStripper()
-    stripper.feed(html)
-    return stripper.text
+    try:
+        stripper = MLStripper()
+        stripper.feed(html)
+        return stripper.text
+    except:
+        return cgi.escape(html)

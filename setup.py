@@ -40,7 +40,8 @@ setup(
         'WebTest',
         'Beaker',
 	'Routes',
-	'CherryPy'
+	'CherryPy',
+	'pytz'
     ],
     dependency_links=[
     ],

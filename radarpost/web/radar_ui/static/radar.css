@@ -208,25 +208,50 @@ a img {
 }
 
 .hentry > h3 {
-    padding-bottom: 1em;
+    padding-bottom: .5em;
+    display: block;
     font-size: 1.2em;
 }
 
-.entry-content {
+.hentry abbr.updated {
+    font-size: 0.75em;
+    font-style: italic;
+    display: block;
+}
+
+.hentry .authors {
+    font-size: 0.75em;
+    font-style: italic;
+    display: block;
+}
+
+.hentry .source {
+    font-size: 0.75em;
+    font-style: italic;
+    display: block;
+    padding-bottom: 1em;
+}
+
+
+.hentry > .entry-content, 
+.hentry > .entry-summary {
     font-size: 0.8em;
     line-height: 1.45em;
     text-indent: none;
 }
 
-.entry-content a {
+.entry-content a,
+.entry-summary a {
     color: #007FBF !important;
     text-decoration: none !important;
 }
-.entry-content a:hover {
+.entry-content a:hover,
+.entry-summary a:hover {
     text-decoration: underline !important;
 }
 
-.entry-content p {
+.entry-content p,
+.entry-summary p {
     margin-bottom: 1em;
 }
 

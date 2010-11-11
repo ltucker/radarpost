@@ -25,7 +25,8 @@ class RadarTestCase(TestCase):
                        'beaker.session.type': 'memory', 
                        'couchdb.users_database': self.TEST_USERS_DB,
                        'couchdb.address': 'http://localhost:5984',
-                       'couchdb.prefix': 'radar/'
+                       'couchdb.prefix': 'radar/',
+                       'timezone': 'US/Eastern'
                        }
 
         self.url_gen = URLGenerator(build_routes(self.config), {})

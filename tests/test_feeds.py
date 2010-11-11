@@ -9,7 +9,7 @@ def test_feed_basic():
     update the subscription
     assert expected items are in the mailbox
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
+    from radarpost.feed import FeedSubscription, update_feed_subscription, parse, AtomEntry
     from radarpost.mailbox import Message
 
 
@@ -35,8 +35,8 @@ def test_feed_basic():
     # check that each item in the random feed is in the 
     # mailbox and only items from the random feed are in there.
     seen_ids = []
-    for ni in BasicNewsItem.view(mb, Message.by_timestamp, include_docs=True, reduce=False):
-        seen_ids.append(ni.item_id)
+    for ni in AtomEntry.view(mb, Message.by_timestamp, include_docs=True, reduce=False):
+        seen_ids.append(ni.entry_id)
     
     expected_ids = set([e['id'] for e in entries])
     assert len(seen_ids) == len(entries)
@@ -55,7 +55,7 @@ def test_feed_update():
     assert expected items are in the mailbox
     assert that old items are not repeated
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
+    from radarpost.feed import FeedSubscription, update_feed_subscription, parse, AtomEntry
     from radarpost.mailbox import Message
 
     # create two versions of a random feed.
@@ -89,9 +89,9 @@ def test_feed_update():
     # check that each item in the feed is in the 
     # mailbox and only items from the feed are in there.
     seen_ids = []
-    for ni in BasicNewsItem.view(mb, Message.by_timestamp,
+    for ni in AtomEntry.view(mb, Message.by_timestamp,
                                  include_docs=True, reduce=False):
-        seen_ids.append(ni.item_id)
+        seen_ids.append(ni.entry_id)
 
     expected_ids = set([e['id'] for e in entries1])
     assert len(seen_ids) == len(entries1)
@@ -106,9 +106,9 @@ def test_feed_update():
     # mailbox and only items from the feed are in there 
     # and they're there exactly once.
     seen_ids = []
-    for ni in BasicNewsItem.view(mb, Message.by_timestamp,
-                                 include_docs=True, reduce=False):
-        seen_ids.append(ni.item_id)
+    for ni in AtomEntry.view(mb, Message.by_timestamp,
+                             include_docs=True, reduce=False):
+        seen_ids.append(ni.entry_id)
 
     expected_ids = set([e['id'] for e in entries2])
     assert len(seen_ids) == len(entries2)
@@ -120,7 +120,7 @@ def test_feed_delete_sticks():
     make sure that an item deleted from a mailbox does not 
     reappear if it still exists in the source feed.
     """
-    from radarpost.feed import FeedSubscription, BasicNewsItem, update_feed_subscription, parse
+    from radarpost.feed import FeedSubscription, update_feed_subscription, parse, AtomEntry
     from radarpost.mailbox import Message
     
     # create two versions of a random feed.
@@ -155,9 +155,9 @@ def test_feed_delete_sticks():
     # mailbox and only items from the feed are in there.
     seen_ids = []
     news_items = []
-    for ni in BasicNewsItem.view(mb, Message.by_timestamp,
-                                 include_docs=True, reduce=False):
-        seen_ids.append(ni.item_id)
+    for ni in AtomEntry.view(mb, Message.by_timestamp,
+                             include_docs=True, reduce=False):
+        seen_ids.append(ni.entry_id)
         news_items.append(ni)
 
     expected_ids = set([e['id'] for e in entries1])
@@ -188,12 +188,12 @@ def test_feed_delete_sticks():
     # mailbox and only items from the feed are in there 
     # and they're there exactly once.
     seen_ids = []
-    for ni in BasicNewsItem.view(mb, Message.by_timestamp,
-                                 include_docs=True, reduce=False):
-        seen_ids.append(ni.item_id)
+    for ni in AtomEntry.view(mb, Message.by_timestamp,
+                             include_docs=True, reduce=False):
+        seen_ids.append(ni.entry_id)
 
     expected_ids = set([e['id'] for e in entries2])
-    expected_ids.remove(killed_item.item_id)
+    expected_ids.remove(killed_item.entry_id)
     assert len(seen_ids) == len(expected_ids)
     for iid in seen_ids:
         assert iid in expected_ids

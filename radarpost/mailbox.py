@@ -86,7 +86,7 @@ class SourceInfo(Mapping):
     """
     subscription_id = TextField()
     subscription_type = TextField()
-    title = TextField()
+    subscription_title = TextField()
 
 class Message(DowncastDoc):
     """
