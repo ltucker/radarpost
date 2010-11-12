@@ -4,77 +4,31 @@
 <script>
 var mailbox_slug = "{{ mailbox_slug }}";
 
-var subscription_row = function(sub) {
-    var title = sub.title || sub.url || sub.slug;
-    var row = '<tr id="' + sub.slug + '" class="subscription">'
-
-    row += '<td><button class="delete">Delete</button></td>';
-    
-    row += '<td>'
-    if (sub.url) {
-        row += '<a href="' + sub.url + '">' + title + '</a>';
-    }
-    else {
-        row += title;
-    }
-    row += '</td>'
-
-    row += '</tr>'
-    
-    return row;
-};
-
-var update_subscriptions = function() {
-    $.ajax({
-        type: 'GET',
-        url: '/' + mailbox_slug + '/subscriptions.json',
-        contentType: 'application/json',
-        success: function(data) {
-            var sub_list = $('table.subscription_list > tbody');
-            sub_list.html('');
-            for (var i = 0; i < data.length; i++) {
-                sub_list.append(subscription_row(data[i]));
-            }
-        }
-    })
+var recolor_table = function() {
+    $('table.subscription-list tbody tr').each(function(index, el) {
+       if (index % 2 == 0) {
+           $(el).addClass('even');
+       }
+       else {
+           $(el).removeClass('even');
+       }
+    });
 };
 
 $(document).ready(function() {
-    $('table.subscription_list button.delete').live('click', function(evt) {
+    recolor_table();
+    
+    $('table.subscription-list .delete-button').live('click', function(evt) {
         evt.preventDefault();
-        var delete_slug = $(evt.target).closest('li').attr('id');
+        var row = $(evt.target).closest('tr')
+        var delete_slug = row.attr('id');
         $.ajax({
             type: 'DELETE',
-            url: mailbox_slug + '/subscriptions/' + delete_slug,
+            url: '/' + mailbox_slug + '/subscriptions/' + delete_slug,
             complete: function(req) {
                 if (req.status == 200) {
-                    update_subscriptions();
-                }
-            }
-        });
-    });
-
-    update_subscriptions();
-    
-    $('#add_subscription').submit(function(evt) {
-        evt.preventDefault();
-        var sub_info = {
-            title: $('#subscription_name').attr('value'),
-            url: $('#subscription_url').attr('value'),
-            type: $('#subscription_type').attr('value')
-        };
-
-        $.ajax({
-            type: 'POST',
-            url: mailbox_slug + '/subscriptions',
-            contentType: 'application/json',
-            data: JSON.stringify(sub_info),
-            complete: function(req) {
-                if (req.status != 201) {
-                    return show_error("subscription", 'Failed to add subscription');
-                }
-                else {
-                    update_subscriptions();
+                    row.remove();
+                    recolor_table();
                 }
             }
         });
@@ -84,6 +38,8 @@ $(document).ready(function() {
 {% endblock %}
 
 {% block content %}
+
+{% if user.has_perm(PERM_EDIT, mailbox) %}
 <div id="new_subscription">
     <h2>New Subscription</h2>
     <form id="add_subscription" action="{{ url_for('subscriptions_rest', mailbox_slug=mailbox_slug) }}">
@@ -94,15 +50,49 @@ $(document).ready(function() {
         <input type="submit" value="Add Subscription"/>
     </form>
 </div>
+{% endif %}
+
 
 <div id="subscriptions">
-    <h2>Subscriptions</h2>
-    <table class="subscription_list">
+    <h1>Subscriptions</h1>
+    <table class="subscription-list">
         <thead>
-            <tr><th></th><th>URL</th></tr>
+            <tr>
+                <th class="title">Name</th>
+                <th class="status">Status</th>
+                <th class="update">Last Update</th>
+                <th class="actions"></th>
+            </tr>
         </thead>
         <tbody>
-            <tr><td></td><td>Loading...</td></tr>
+            {% for sub in subscriptions %}
+            <tr id="{{sub.id}}">
+                <td class="title">
+                    {% if sub.url %}
+                    <a href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
+                    {% else %}
+                    <span title="{{sub.title}}">{{sub.title}}</span>
+                    {% endif %}
+                </td>
+                <td class="status">
+                    {% if sub.status == 'error' %}
+                    <span class="subscription-error">Error</span>
+                    {% else %}
+                    <span class="subscription-ok">OK</span>
+                    {% endif %}
+                </td>
+                <td class="update">
+                    {{ sub.last_update|brief_date(TIME_ZONE) }}
+                </td>
+                <td class="actions">
+                    {% if user.has_perm(PERM_UPDATE, mailbox) %}
+                    <!-- <a href="#" class="edit-button"><img title="edit" src="{{url_for('static_file', path="images/icons/pencil.png")}}" /></a> -->
+                    <a href="#" class="delete-button"><img title="delete" src="{{url_for('static_file', path="images/icons/delete.png")}}" /></a>
+                    {% endif %}
+                </td>
+
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </div>

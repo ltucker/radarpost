@@ -274,10 +274,53 @@ a img {
 * Subscriptions
 *
 ************************/
-
-table {
+table.subscription-list {
     font-size: 0.8em;
+    line-height: 1.125em;
+    width: 460px;
+    text-align: left;
+    table-layout: fixed;
 }
+
+table.subscription-list tr.even {
+    background-color: #eaeaef;
+}
+
+table.subscription-list td,
+table.subscription-list th {
+    padding-left: 10px;
+    padding-top: 0.9375em;
+    height: 1.125em;
+    padding-bottom: 0.9375em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+table.subscription-list .title {
+    width: 193px;
+}
+table.subscription-list .status {
+    width: 45px;
+}
+table.subscription-list .update {
+    width: 100px;
+}
+table.subscription-list .actions {
+    width: 42px;
+    padding-right: 10px;
+}
+table.subscription-list .actions img {
+    display: inline;
+}
+
+.subscription-error {
+    color: #ff0000;
+}
+.subscription-ok {
+    color: #00a000;
+}
+
+
 
 /*********************************** 
  *

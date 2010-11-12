@@ -18,6 +18,8 @@ from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.mailbox import iter_mailboxes as _iter_mailboxes
 from radarpost.user import User, AnonymousUser
+from radarpost.user import PERM_CREATE, PERM_READ, PERM_UPDATE, PERM_DELETE
+from radarpost.user import PERM_CREATE_MAILBOX
 
 __all__ = ['RequestContext', 'build_routes', 'config_section',
            'get_couchdb_server', 'get_database_name', 'get_mailbox_slug',
@@ -297,6 +299,14 @@ def pretty_date(date, tz):
     fmt = "%a, %b %d %Y at %I:%M%p %Z"
     return loc.strftime(fmt)
 
+@plugin(TEMPLATE_FILTERS)
+def brief_date(date, tz):
+    if date.tzinfo is None: 
+        date = date.replace(tzinfo=utc)
+    loc = date.astimezone(timezone(tz))
+    fmt = "%m/%d/%y %I:%M%p"
+    return loc.strftime(fmt)
+
 @plugin(TEMPLATE_CONTEXT_PROCESSORS)
 def expose_request(request, ctx):
     """
@@ -320,6 +330,24 @@ def expose_timezone(request, ctx):
     of the configured time zone to templates.
     """
     ctx['TIME_ZONE'] = request.context.config['timezone']
+    
+@plugin(TEMPLATE_CONTEXT_PROCESSORS)
+def expose_user(request, ctx):
+    """
+    exposes the requesting user as 'user'
+    """
+    ctx['user'] = request.context.user
+    
+@plugin(TEMPLATE_CONTEXT_PROCESSORS)
+def expose_permission_constants(request, ctx):
+    """
+    exposes some helpful constants for checking permissions
+    """
+    ctx['PERM_CREATE'] = PERM_CREATE
+    ctx['PERM_READ'] = PERM_READ
+    ctx['PERM_UPDATE'] = PERM_UPDATE
+    ctx['PERM_DELETE'] = PERM_DELETE
+    ctx['PERM_CREATE_MAILBOX'] = PERM_CREATE_MAILBOX
 
 #####################################
 # URL Routing & Static Files
@@ -406,6 +434,8 @@ def serve_static_file(request, path):
         except: 
             continue
     return HttpResponse(status=404)
+
+
 
 ###################
 

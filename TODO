@@ -1,9 +1,11 @@
 OPML import from UI
-UI security pass
+Feed search UI - Javascript?
+UI security pass - hide what you can't do
 favicon
 delete item UI
 sync mailboxes / user db command
 pubsubhub
+bottom of page styling
 
 ===
 
@@ -25,6 +27,7 @@ basic filtering
 paver / installation
 split framework
 i18n
+
 
 
 === 

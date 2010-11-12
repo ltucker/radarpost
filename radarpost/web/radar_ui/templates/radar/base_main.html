@@ -3,6 +3,10 @@
 {% block context_nav %}
 <ul class="main-nav">
   <li><a href="{{url_for('list_mailboxes')}}">Directory</a></li>
+  {% if user.has_perm(PERM_CREATE_MAILBOX) %}
   <li><a href="{{url_for('create_mailbox_ui')}}">Create New</a></li>
+  {% else %}
+  <li><span class="disabled">Create New</span></li>
+  {% endif %}
 </ul>
 {% endblock %}

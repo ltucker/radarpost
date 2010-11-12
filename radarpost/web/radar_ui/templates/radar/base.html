@@ -21,10 +21,10 @@
         <h1>{% block header_title %}RadarPost{% endblock %}</h1>
         <div id="global-nav">
           <ul>
-              {% if request.context.user.is_anonymous() %}
+              {% if user.is_anonymous() %}
               <li><a href="{{ url_for('login_page') }}">Login</a></li>
               {% else %}
-              <li><a href="{{ url_for('logout_page') }}">Logout {{ request.context.user.username }}</a></li>
+              <li><a href="{{ url_for('logout_page') }}">Logout {{ user.username }}</a></li>
               {% endif %}
           </ul>
         </div>

@@ -8,7 +8,11 @@
 <ul class="mailbox-nav">
     <li><a class="items-link" href="{{url_for('view_mailbox', mailbox_slug=mailbox_slug)}}">Items</a></li>
     <li><a class="subscriptions-link" href="{{url_for('manage_subscriptions', mailbox_slug=mailbox_slug)}}">Subscriptions</a></li>
+    {% if user.has_perm(PERM_EDIT, mailbox) %}
     <li><a class="edit-link" href="{{url_for('manage_info', mailbox_slug=mailbox_slug)}}">Edit</a></li>
+    {% else %}
+    <li><span class="disabled">Edit</span></li>
+    {% endif %}
     <li><a class="feed-link" href="{{ url_for('atom_feed', mailbox_slug=mailbox_slug)}}">Feed</a></li>
 </ul>
 {% endblock %}

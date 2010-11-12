@@ -37,12 +37,24 @@ $(window).ready(function() {
 
 
 {% block content %}
+<h1>Login</h1>
+{% if next %}
+<p>Please login to continue</p>
+{% endif %}
 <form id="login_form" method="POST" action="{{ url_for('login') }}">
     <div class="error"></div>
-    <input type="text" name="username" />
-    <input type="password" name="password" />
+    <div>
+      <label for="username">Username</label>
+      <input type="text" name="username" />
+    </div>
+    <div>
+      <label for="password">Password</label>
+      <input type="password" name="password" />
+    </div>
     {% if next %}
     <input type="hidden" name="next" value="{{next}}" />
+    {% else %}
+    <input type="hidden" name="next" value="{{ url_for('front_page')}}" />
     {% endif %}
     <input type="submit" value="Login" />
 </form>
