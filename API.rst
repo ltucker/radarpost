@@ -413,10 +413,37 @@ Results
 
 
 DELETE /<mbid>/subscriptions/<subid>
-=====================================
+====================================
 delete the subscription at the url given
 
 Results
 --------
 200 - the subscription was deleted
 404 - the mailbox or the subscription did not exist
+
+POST /<mbid>/subscriptions/<subid>
+==================================
+update subscription information
+
+body varies on content-type header of
+submission. Accepts form submission or json.
+
+application/x-json, eg::
+
+    {'title': 'New Title'}
+
+x-www-form-urlencoded, eg::
+
+    title=New%20Title
+
+Response Body
+-------------
+of the form::
+
+    {'slug': <sub id>, 'type': <subscription type>, 'title': <title>, <... type specific>}
+
+Results
+--------
+200 - success
+404 - the mailbox or subscription does not exist
+400 - update failed, invalid info

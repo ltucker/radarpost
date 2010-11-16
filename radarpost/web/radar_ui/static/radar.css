@@ -329,6 +329,7 @@ table.subscription-list .title {
 }
 table.subscription-list .status {
     width: 45px;
+    text-align: center;
 }
 table.subscription-list .update {
     width: 100px;
@@ -350,7 +351,13 @@ button {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: normal;
     background-color: #f6f6f6;
+    outline: 0;
 }
+button > a {
+    display: none;
+    outline: 0;
+}
+button::-moz-focus-inner { border: 0; }
 
 span.button-text {
     display: block;
@@ -411,6 +418,25 @@ table.subscription-list button.edit-button {
 .dialog-icon {
     float: left;
 }
+
+/*********************
+*
+* Forms
+*
+*********************/
+
+.form-error {
+    display: block;
+    color: #aa4040;
+    font-weight: bold;
+}
+
+form label {
+    font-weight: bold;
+    text-align: right;
+    margin-right: 10px;
+}
+
 
 
 /*********************************** 

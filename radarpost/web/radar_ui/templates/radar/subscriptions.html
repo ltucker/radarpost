@@ -2,74 +2,12 @@
 
 {% block extra_head %}
 <script>
-var mailbox_slug = "{{ mailbox_slug }}";
-
-var recolor_table = function() {
-    mark_odd('table.subscription-list tbody tr', 'odd');
-};
-
-
-
-$(document).ready(function() {
-    recolor_table();
-    
-    $('table.subscription-list .delete-button').live('click', function(evt) {
-        evt.preventDefault();
-        var row = $(evt.target).closest('tr')
-        var delete_slug = row.attr('id');
-        var sub_name = row.attr('title');
-
-        
-        var do_delete = function() {
-            $.ajax({
-                type: 'DELETE',
-                url: '/' + mailbox_slug + '/subscriptions/' + delete_slug,
-                complete: function(req) {
-                    if (req.status == 200) {
-                        row.remove();
-                        recolor_table();
-                    }
-                    else {
-                        $('<div></div>')
-                            .html('Failed to delete subcription!')
-                            .dialog({
-                                modal: true,
-                                autoOpen: true,
-                                title: "Error",
-                                buttons: {
-                                    'Ok': function() {$(this).dialog("close");}
-                                }
-                            });
-                    }
-                }
-            });
-        };
-        
-        var delete_html = "<p><span class=\"ui-icon ui-icon-alert dialog-icon\"></span>Delete subscription to <strong>" + sub_name + "</strong>?</p>";        
-        $('<div></div>')
-            .html(delete_html)
-        	.dialog({
-        		modal: true,
-        		autoOpen: true,
-        		title: 'Confirm Delete Subscription',
-        		buttons: {
-        			'Delete': function() {
-        			    $(this).dialog("close");
-        			    do_delete();
-        			},
-        			'Cancel': function() {
-        			    $(this).dialog("close");
-        			}
-        		}
-        	});
-    });
-});
+    var mailbox_slug = "{{ mailbox_slug }}";
 </script>
+<script src="{{url_for('static_file', path="subscriptions.js")}}"></script>
 {% endblock %}
 
 {% block content %}
-
-
 
 <div id="subscriptions">
     <h1>Subscriptions</h1>
@@ -92,12 +30,12 @@ $(document).ready(function() {
         </thead>
         <tbody>
             {% for sub in subscriptions %}
-            <tr id="{{sub.id}}" title="{{sub.title}}">
+            <tr id="{{sub.id}}">
                 <td class="title">
                     {% if sub.url %}
-                    <a href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
+                    <a class="subscription-title" href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
                     {% else %}
-                    <span title="{{sub.title}}">{{sub.title}}</span>
+                    <span class="subscription-title" title="{{sub.title}}">{{sub.title}}</span>
                     {% endif %}
                 </td>
                 {% if user.has_perm(PERM_EDIT, mailbox) %}
@@ -113,8 +51,12 @@ $(document).ready(function() {
                 </td>
                 <td class="actions">
                     {% if user.has_perm(PERM_UPDATE, mailbox) %}
-                    <button class="edit-button" title="Edit">Edit</button>
-                    <button class="delete-button" title="Delete">Delete</button>
+                    <button class="edit-button" title="Edit">
+                        <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
+                    </button>
+                    <button class="delete-button" title="Delete">
+                        <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
+                    </button>
                     {% endif %}
                 </td>
                 {% endif %}

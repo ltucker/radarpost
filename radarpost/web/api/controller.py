@@ -564,7 +564,9 @@ def _update_subscription(request, mailbox_slug, sub_slug):
     try:
         sub.user_update(params)
         sub.store(mb)
-        return HttpResponse()
+        return HttpResponse(status=500)
+        return HttpResponse(json.dumps(_sub_json(sub)), 
+                            content_type="application/json")
     except:
         return HttpResponse(status=400)
     

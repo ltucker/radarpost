@@ -45,13 +45,13 @@ $(document).ready(function() {
                     window.location.pathname = '/' + slug
                 }
                 else if (req.status == '409') {
-                    show_error('mailbox_slug', 'This url is already in use.');
+                    show_form_error('mailbox_slug', 'This url is already in use.');
                 }
                 else if (req.status == '400') {
-                    show_error('mailbox_name', 'Invalid name.')
+                    show_form_error('mailbox_name', 'Invalid name.')
                 }
                 else {
-                    show_error('mailbox_slug', 'Could not create a mailbox at the specified location.')
+                    show_form_error('mailbox_slug', 'Could not create a mailbox at the specified location.')
                 }
             }
         });
@@ -60,13 +60,13 @@ $(document).ready(function() {
     var do_create = function() {
         var slug = $('#mailbox_slug').attr('value');
         if (slug.length < 1) {
-            return show_error('mailbox_slug', 'please provide a url.');
+            return show_form_error('mailbox_slug', 'please provide a url.');
         }
         if (slug.length > 128) {
-            return show_error('mailbox_slug', 'maximum length is 128 characters.');
+            return show_form_error('mailbox_slug', 'maximum length is 128 characters.');
         }
         if (valid_slug_re.exec(slug) == null) {
-            return show_error('mailbox_slug', 'invalid url, must contain only lowercase letters, numbers and _');
+            return show_form_error('mailbox_slug', 'invalid url, must contain only lowercase letters, numbers and _');
         }
 
         $.ajax({
@@ -74,7 +74,7 @@ $(document).ready(function() {
             url: '/' + slug,
             complete: function(req) {
                 if (req.status != 404) {
-                    return show_error("mailbox_slug", 'This url is reserved or already in use.');
+                    return show_form_error("mailbox_slug", 'This url is reserved or already in use.');
                 }
                 else {
                     try_create();
