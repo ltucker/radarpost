@@ -60,7 +60,7 @@ body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     line-height: 1.125em;
     min-width: 620px;
-    background: url('/static/images/background.png')
+    background: url('/static/images/background.png');
 }
 
 #main {
@@ -189,7 +189,12 @@ a img {
     color: #262626;
 }
 
-#content p {
+
+#content > h1 {
+    margin-bottom: 1.25em;    
+}
+#content > p {
+    font-size: 1em;
     margin-bottom: 1.25em;
 }
 
@@ -235,7 +240,7 @@ a img {
 
 .hentry > .entry-content, 
 .hentry > .entry-summary {
-    font-size: 0.8em;
+    font-size: 0.8125em;
     line-height: 1.45em;
     text-indent: none;
 }
@@ -266,8 +271,48 @@ a img {
 ************************/
 #footer {
     clear: both;
+    padding-top: 4em;
 }
 
+/************************
+*
+* basic table style
+*
+************************/
+
+table {
+    text-align: left;
+    font-size: 0.8125em;
+}
+
+table thead tr {
+    background-color: #2f2f2f;
+    color: #efefef;
+}
+
+table tr.odd {
+    background-color: #eaeaef;
+}
+
+table td,
+table th {
+    padding-left: 10px;
+    padding-top: 0.9375em;
+    height: 1.125em;
+    padding-bottom: 0.9375em;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/************************
+*
+* Directory
+*
+************************/
+
+table.mailbox-list {
+    width: 460px;
+}
 
 /************************
 *
@@ -275,25 +320,8 @@ a img {
 *
 ************************/
 table.subscription-list {
-    font-size: 0.8em;
-    line-height: 1.125em;
     width: 460px;
-    text-align: left;
     table-layout: fixed;
-}
-
-table.subscription-list tr.even {
-    background-color: #eaeaef;
-}
-
-table.subscription-list td,
-table.subscription-list th {
-    padding-left: 10px;
-    padding-top: 0.9375em;
-    height: 1.125em;
-    padding-bottom: 0.9375em;
-    overflow: hidden;
-    white-space: nowrap;
 }
 
 table.subscription-list .title {
@@ -309,9 +337,6 @@ table.subscription-list .actions {
     width: 42px;
     padding-right: 10px;
 }
-table.subscription-list .actions img {
-    display: inline;
-}
 
 .subscription-error {
     color: #ff0000;
@@ -320,6 +345,72 @@ table.subscription-list .actions img {
     color: #00a000;
 }
 
+button {
+    font-size: 0.75em;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: normal;
+    background-color: #f6f6f6;
+}
+
+span.button-text {
+    display: block;
+    height: 12px;
+    margin: 0px;
+    padding-left: 0px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-right: 0px;
+    line-height: 1em;
+    text-align: left;
+    text-decoration: none !important;
+}
+
+
+button.add-subscription {
+    float: right;
+    border: none;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    display: block;
+    background-color: ;
+}
+
+button.add-subscription .button-text {
+    padding-left: 18px;
+    background: transparent url('/static/images/icons/add.png') no-repeat top left;
+}
+
+
+
+table.subscription-list button.delete-button {
+    background: transparent url('/static/images/icons/delete.png') no-repeat center top;
+    border: none;
+    text-indent: -9999999px;
+    width: 16px;
+    height: 16px;
+    display: inline;
+    cursor: pointer;
+}
+table.subscription-list button.edit-button {
+    background: transparent url('/static/images/icons/pencil.png') no-repeat center top;
+    border: none;
+    text-indent: -9999999px;
+    width: 16px;
+    height: 16px;
+    display: inline;
+    cursor: pointer;
+}
+
+
+/*******************
+*
+* Dialogs
+*
+*******************/
+.dialog-icon {
+    float: left;
+}
 
 
 /*********************************** 

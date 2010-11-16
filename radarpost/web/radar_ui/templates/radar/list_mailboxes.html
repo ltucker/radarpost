@@ -2,17 +2,35 @@
 
 {% block content %}
 
+{% block extra_head %}
+<script>
+
+var recolor_table = function() {
+    mark_odd('table.mailbox-list tbody tr', 'odd');
+};
+
+$(document).ready(function() {
+    recolor_table();
+    
+});
+</script>
+{% endblock %}
+
 <h2>Directory</h2>
 <table class="mailbox-list">
-<tr>
-    <th>Name</th>
-    <th>URL</th>
-</tr>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>URL</th>
+        </tr>
+    </thead>
 {% for mb in mailboxes %}
-  <tr>
-      <td>{{mb.title}}</td>
-      <td><a href="/{{mb.slug}}">/{{mb.slug}}</a></td>
-  </tr>
+    <tbody> 
+        <tr>
+            <td>{{mb.title}}</td>
+            <td><a href="/{{mb.slug}}">/{{mb.slug}}</a></td>
+        </tr>
+    </tbody>
 {% endfor %}
 </table>
 

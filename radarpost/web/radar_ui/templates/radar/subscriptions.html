@@ -5,15 +5,10 @@
 var mailbox_slug = "{{ mailbox_slug }}";
 
 var recolor_table = function() {
-    $('table.subscription-list tbody tr').each(function(index, el) {
-       if (index % 2 == 0) {
-           $(el).addClass('even');
-       }
-       else {
-           $(el).removeClass('even');
-       }
-    });
+    mark_odd('table.subscription-list tbody tr', 'odd');
 };
+
+
 
 $(document).ready(function() {
     recolor_table();
@@ -22,16 +17,51 @@ $(document).ready(function() {
         evt.preventDefault();
         var row = $(evt.target).closest('tr')
         var delete_slug = row.attr('id');
-        $.ajax({
-            type: 'DELETE',
-            url: '/' + mailbox_slug + '/subscriptions/' + delete_slug,
-            complete: function(req) {
-                if (req.status == 200) {
-                    row.remove();
-                    recolor_table();
+        var sub_name = row.attr('title');
+
+        
+        var do_delete = function() {
+            $.ajax({
+                type: 'DELETE',
+                url: '/' + mailbox_slug + '/subscriptions/' + delete_slug,
+                complete: function(req) {
+                    if (req.status == 200) {
+                        row.remove();
+                        recolor_table();
+                    }
+                    else {
+                        $('<div></div>')
+                            .html('Failed to delete subcription!')
+                            .dialog({
+                                modal: true,
+                                autoOpen: true,
+                                title: "Error",
+                                buttons: {
+                                    'Ok': function() {$(this).dialog("close");}
+                                }
+                            });
+                    }
                 }
-            }
-        });
+            });
+        };
+        
+        var delete_html = "<p><span class=\"ui-icon ui-icon-alert dialog-icon\"></span>Delete subscription to <strong>" + sub_name + "</strong>?</p>";        
+        $('<div></div>')
+            .html(delete_html)
+        	.dialog({
+        		modal: true,
+        		autoOpen: true,
+        		title: 'Confirm Delete Subscription',
+        		buttons: {
+        			'Delete': function() {
+        			    $(this).dialog("close");
+        			    do_delete();
+        			},
+        			'Cancel': function() {
+        			    $(this).dialog("close");
+        			}
+        		}
+        	});
     });
 });
 </script>
@@ -39,34 +69,30 @@ $(document).ready(function() {
 
 {% block content %}
 
-{% if user.has_perm(PERM_EDIT, mailbox) %}
-<div id="new_subscription">
-    <h2>New Subscription</h2>
-    <form id="add_subscription" action="{{ url_for('subscriptions_rest', mailbox_slug=mailbox_slug) }}">
-        <div id="subscription_error"></div>
-        <input type="hidden" id="subscription_type" name="type" value="feed" />
-        <div><label for="title">Title</label><input id="subscription_title" type="text" name="title" /></div>
-        <div><label for="url">URL</label><input id="subscription_url" type="text" name="url" /></div>
-        <input type="submit" value="Add Subscription"/>
-    </form>
-</div>
-{% endif %}
 
 
 <div id="subscriptions">
     <h1>Subscriptions</h1>
+    {% if user.has_perm(PERM_EDIT, mailbox) %}
+    <button class="add-subscription" title="New Subscription">
+        <span class="button-text">New Subscription</span>
+    </button>
+    {% endif %}
+
     <table class="subscription-list">
         <thead>
             <tr>
                 <th class="title">Name</th>
+                {% if user.has_perm(PERM_EDIT, mailbox) %}
                 <th class="status">Status</th>
                 <th class="update">Last Update</th>
                 <th class="actions"></th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
             {% for sub in subscriptions %}
-            <tr id="{{sub.id}}">
+            <tr id="{{sub.id}}" title="{{sub.title}}">
                 <td class="title">
                     {% if sub.url %}
                     <a href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
@@ -74,6 +100,7 @@ $(document).ready(function() {
                     <span title="{{sub.title}}">{{sub.title}}</span>
                     {% endif %}
                 </td>
+                {% if user.has_perm(PERM_EDIT, mailbox) %}
                 <td class="status">
                     {% if sub.status == 'error' %}
                     <span class="subscription-error">Error</span>
@@ -86,11 +113,12 @@ $(document).ready(function() {
                 </td>
                 <td class="actions">
                     {% if user.has_perm(PERM_UPDATE, mailbox) %}
-                    <!-- <a href="#" class="edit-button"><img title="edit" src="{{url_for('static_file', path="images/icons/pencil.png")}}" /></a> -->
-                    <a href="#" class="delete-button"><img title="delete" src="{{url_for('static_file', path="images/icons/delete.png")}}" /></a>
+                    <button class="edit-button" title="Edit">Edit</button>
+                    <button class="delete-button" title="Delete">Delete</button>
                     {% endif %}
                 </td>
-
+                {% endif %}
+                
             </tr>
             {% endfor %}
         </tbody>

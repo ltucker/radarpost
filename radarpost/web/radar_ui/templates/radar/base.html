@@ -5,10 +5,14 @@
     {% block base_javascripts %}
     <script src="{{ url_for('static_file', path='json2.js') }}"></script>
     <script src="{{ url_for('static_file', path='jquery-1.4.2.min.js') }}"></script>
+    <script src="{{ url_for('static_file', path='jquery_ui/jquery-ui-1.8.6.custom.min.js')}}"></script>
     <script src="{{ url_for('static_file', path='radar.js')}}"></script>
     {% endblock %}
     {% block base_styles %}
+
     <link rel="stylesheet" type="text/css" href="{{ url_for('static_file', path='radar.css')}}"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static_file', path='jquery_ui/jquery-ui-1.8.6.custom.css')}}"/>
+
     {% endblock %}
     {% block extra_head %}{% endblock %}
   </head>

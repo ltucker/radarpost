@@ -6,6 +6,8 @@ delete item UI
 sync mailboxes / user db command
 pubsubhub
 bottom of page styling
+confirm deletes
+titles are not CDATA
 
 ===
 
