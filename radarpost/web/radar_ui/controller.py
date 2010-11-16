@@ -228,7 +228,7 @@ def manage_info(request, mailbox_slug):
     if mb is None:
       return HttpResponse(status=404)
 
-    if not ctx.user.has_perm(PERM_EDIT, mb):
+    if not ctx.user.has_perm(PERM_UPDATE, mb):
       return handle_unauth(request)
 
     ctx = {}
