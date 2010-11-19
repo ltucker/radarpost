@@ -64,7 +64,7 @@ body {
 }
 
 #main {
-    width: 620px;    
+    width: 620px;
     background-color: #f6f6f6;
     margin-left: auto;
     margin-right: auto;
@@ -190,8 +190,10 @@ a img {
 }
 
 
-#content > h1 {
-    margin-bottom: 1.25em;    
+#content h2 {
+    font-size: 1.25em;
+    color: #4C4D50;
+    margin-bottom: .5em;    
 }
 #content > p {
     font-size: 1em;
@@ -280,8 +282,7 @@ a img {
 *
 ************************/
 
-table {
-    text-align: left;
+#content table {
     font-size: 0.8125em;
 }
 
@@ -296,9 +297,10 @@ table tr.odd {
 
 table td,
 table th {
+    text-align: left;
     padding-left: 10px;
     padding-top: 0.9375em;
-    height: 1.125em;
+    line-height: 1.125em;
     padding-bottom: 0.9375em;
     overflow: hidden;
     white-space: nowrap;
@@ -346,23 +348,21 @@ table.subscription-list .actions {
     color: #00a000;
 }
 
-button {
+button.add-subscription, 
+.opml-link {
     font-size: 0.75em;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: normal;
     background-color: #f6f6f6;
-    outline: 0;
-}
-button > a {
-    display: none;
-    outline: 0;
 }
 button::-moz-focus-inner { border: 0; }
 
-span.button-text {
+span.button-text,
+.opml-link {
     display: block;
     height: 12px;
     margin: 0px;
+    margin-bottom: .25em;
     padding-left: 0px;
     padding-top: 2px;
     padding-bottom: 2px;
@@ -372,6 +372,12 @@ span.button-text {
     text-decoration: none !important;
 }
 
+.opml-link {
+    float: right;
+    padding-left: 18px;
+    padding-right: 12px;
+    background: transparent url('/static/images/icons/arrow_out.png') no-repeat top left;    
+}
 
 button.add-subscription {
     float: right;
@@ -380,34 +386,47 @@ button.add-subscription {
     padding: 0;
     cursor: pointer;
     display: block;
-    background-color: ;
 }
 
 button.add-subscription .button-text {
+    color: #007FBF;
     padding-left: 18px;
     background: transparent url('/static/images/icons/add.png') no-repeat top left;
 }
 
 
 
-table.subscription-list button.delete-button {
-    background: transparent url('/static/images/icons/delete.png') no-repeat center top;
+button.delete-row {
+    background: transparent url('/static/images/icons/delete.png') no-repeat center left;
     border: none;
     text-indent: -9999999px;
     width: 16px;
     height: 16px;
     display: inline;
     cursor: pointer;
+    vertical-align: top;
 }
-table.subscription-list button.edit-button {
-    background: transparent url('/static/images/icons/pencil.png') no-repeat center top;
+table button.edit-row {
+    background: transparent url('/static/images/icons/pencil.png') no-repeat center left;
     border: none;
     text-indent: -9999999px;
     width: 16px;
     height: 16px;
     display: inline;
     cursor: pointer;
+    vertical-align: top;
 }
+table button.add-row {
+    background: transparent url('/static/images/icons/add.png') no-repeat top left;
+    border: none;
+    text-indent: -9999999px;
+    width: 16px;
+    height: 16px;
+    display: inline;
+    cursor: pointer;
+    vertical-align: top;
+}
+
 
 
 /*******************
@@ -418,6 +437,99 @@ table.subscription-list button.edit-button {
 .dialog-icon {
     float: left;
 }
+
+span.error,
+span.warning,
+span.okay,
+span.empty-icon {
+    border: none;
+    width: 16px;
+    height: 16px;
+    padding-left: 16px;
+    display: inline;
+    vertical-align: top;    
+}
+
+span.error {
+    background: transparent url('/static/images/icons/error.png') no-repeat center left;
+}
+span.warning {
+    background: transparent url('/static/images/icons/exclamation.png') no-repeat center left;
+}
+span.okay {
+    background: transparent url('/static/images/icons/accept.png') no-repeat center left;    
+}
+
+
+/*******************
+*
+* subscription import 
+*
+********************/
+#add_subscriptions {
+    font-size: 0.8125em;
+}
+#add_subscriptions .help p {
+    margin-top: .5em;
+    maring-bottom: .5em;
+}
+#add_subscriptions .help ul {
+    list-style-type: circle;
+    padding-left: 1em;
+}
+
+span.spinner {
+    background: url('/static/images/spinner.gif') no-repeat center left;
+    border: none;
+    width: 16px;
+    height: 16px;
+    padding-left: 16px;
+    display: inline;
+    vertical-align: center;
+}
+
+table.import-list {
+    width: 500px;
+    table-layout: fixed;
+    margin-top: .5em;
+}
+table.import-list thead tr {
+    background-color: #f6f6f6;
+    color: #2f2f2f;
+}
+table.import-list th {
+    padding-bottom: 0.25em;
+}
+table.import-list td {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+}
+table.import-list tbody tr {
+    background-color: #ffffff;
+}
+table.import-list tbody tr.odd {   
+    background-color: #eaeaef;
+}
+
+table.import-list .actions {
+    width: 16px;
+}
+
+table.import-list .title {
+    width: 160px;    
+}
+
+table.import-list .url {
+    width: 324px;
+}
+
+table.import-list button.delete-row {
+    background: transparent url('/static/images/icons/cancel.png') no-repeat center left;    
+}
+table.import-list span.okay {
+    background: transparent url('/static/images/icons/accept-gray.gif') no-repeat center left;       
+}
+
 
 /*********************
 *

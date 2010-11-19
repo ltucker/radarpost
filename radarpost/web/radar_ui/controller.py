@@ -218,8 +218,12 @@ def manage_subscriptions(request, mailbox_slug):
     ctx['mailbox_title'] = info.title or mailbox_slug
     ctx['subscriptions'] = sorted(subs, key=attrgetter('title'))
 
-    return render_to_response('radar/subscriptions.html', 
-                            TemplateContext(request, ctx))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': 
+        return render_to_response('radar/subscriptions_table.html', 
+                                  TemplateContext(request, ctx))
+    else: 
+        return render_to_response('radar/subscriptions.html', 
+                                  TemplateContext(request, ctx))
 
 
 def manage_info(request, mailbox_slug):

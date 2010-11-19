@@ -30,3 +30,17 @@ var mark_odd = function(selector, classname) {
     });
 };
 
+/*var inorder_traverse = function(els, visit) {
+    if (typeof(els) == "undefined" || els.size() == 0) {
+        return;
+    }
+    els.each(function() {
+        var cur = $(this); 
+        visit(cur);
+        inorder_traverse(cur.children());
+    });
+};*/
+
+var strip_tags = function(html) {
+    return $('<div></div>').html(html).text();
+};

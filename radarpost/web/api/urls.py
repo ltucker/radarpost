@@ -59,3 +59,12 @@ def add_routes(mapper):
     mapper.connect("mailbox_rest", "/{mailbox_slug}",
                    action="mailbox_rest", controller=api, requirements=slug_req,
                    conditions={'method': ['HEAD', 'PUT', 'POST', 'DELETE']})
+                   
+    #########################
+    # feed search support
+    
+    mapper.connect("verify_feed", "/feedsearch/feed", 
+                   action="verify_feed", controller=api)
+    
+    mapper.connect("feed_links_html", "/feedsearch/html",
+                   action="feed_links_html", controller=api)

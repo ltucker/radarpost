@@ -64,3 +64,12 @@ def parse_bool(b):
         elif b.lower() == 'false': 
             return False        
     raise ValueError('Cannot parse "%s" as a boolean (True or False)' % b)
+
+def config_section(section, config, reprefix=''):
+    if not section.endswith('.'):
+        section = section + '.'
+    section_options = {}
+    for k in config.keys():
+        if k.startswith(section): 
+            section_options[reprefix + k[len(section):]] = config[k]
+    return section_options

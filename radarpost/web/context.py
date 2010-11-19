@@ -21,7 +21,7 @@ from radarpost.user import User, AnonymousUser
 from radarpost.user import PERM_CREATE, PERM_READ, PERM_UPDATE, PERM_DELETE
 from radarpost.user import PERM_CREATE_MAILBOX
 
-__all__ = ['RequestContext', 'build_routes', 'config_section',
+__all__ = ['RequestContext', 'build_routes', 
            'get_couchdb_server', 'get_database_name', 'get_mailbox_slug',
            'get_mailbox', 'get_mailbox_db_prefix', 'iter_mailboxes',
            'TEMPLATE_FILTERS','TEMPLATE_CONTEXT_PROCESSORS']
@@ -171,14 +171,6 @@ def app_ids(config):
     """
     return config['web.apps']
 
-def config_section(section, config, reprefix=''):
-    if not section.endswith('.'):
-        section = section + '.'
-    section_options = {}
-    for k in config.keys():
-        if k.startswith(section): 
-            section_options[reprefix + k[len(section):]] = config[k]
-    return section_options
 
 ###################################
 #
@@ -293,6 +285,9 @@ def rfc3339(date):
     
 @plugin(TEMPLATE_FILTERS)
 def pretty_date(date, tz):
+    if date is None: 
+        return "Never"
+
     if date.tzinfo is None: 
         date = date.replace(tzinfo=utc)
     loc = date.astimezone(timezone(tz))
@@ -301,6 +296,9 @@ def pretty_date(date, tz):
 
 @plugin(TEMPLATE_FILTERS)
 def brief_date(date, tz):
+    if date is None: 
+        return "Never"
+    
     if date.tzinfo is None: 
         date = date.replace(tzinfo=utc)
     loc = date.astimezone(timezone(tz))

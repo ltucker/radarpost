@@ -2,20 +2,28 @@ import copy
 from couchdb import ResourceConflict
 from couchdb import ResourceNotFound, PreconditionFailed
 from datetime import datetime
+import html5lib
+from html5lib import treebuilders
 import json
+import logging
 import re
-from xml.etree import ElementTree as etree
+import traceback
+from xml.etree import cElementTree as etree
 from webob import Response as HttpResponse
+from radarpost.lib import feedparser
 from radarpost.mailbox import create_mailbox as _create_mailbox, is_mailbox
 from radarpost.mailbox import Message, MESSAGE_TYPE, MailboxInfo
 from radarpost.mailbox import Subscription, SUBSCRIPTION_TYPE
 from radarpost import plugins
 from radarpost.plugins import plugin
 from radarpost.feed import FeedSubscription, FEED_SUBSCRIPTION_TYPE
+from radarpost import http
 from radarpost.user import User, ROLE_ADMIN
 from radarpost.user import PERM_CREATE, PERM_READ, PERM_UPDATE, PERM_DELETE
 from radarpost.user import PERM_CREATE_MAILBOX
 from radarpost.web.context import TemplateContext, check_etag, get_mailbox_etag
+
+log = logging.getLogger(__name__)
 
 ################################################
 #
@@ -564,7 +572,6 @@ def _update_subscription(request, mailbox_slug, sub_slug):
     try:
         sub.user_update(params)
         sub.store(mb)
-        return HttpResponse(status=500)
         return HttpResponse(json.dumps(_sub_json(sub)), 
                             content_type="application/json")
     except:
@@ -758,7 +765,103 @@ def _feeds_in_opml(opml):
             if url is not None:
                 feeds[url] = node.get('title', '')
     return feeds
-    
+
+
+###############
+# feed search / discovery
+
+def feed_links_html(request):
+    query = request.GET.get('url')
+
+    result = _feed_links_html(request, query)
+
+    if result is None: 
+        result = {'links': [], 'error': True}
+    else: 
+        result = {'links': result, 'error': False}
+
+    return HttpResponse(json.dumps(result),
+                        content_type="application/json")
+
+HTML_TYPES = ['text/html', 'application/xhtml+xml']
+FEED_TYPES = ['application/atom+xml', 'application/rss+xml', 'application/rdf+xml']
+def _feed_links_html(request, query):
+    if query is None:
+        return None
+
+    client = http.create_client(request.context.config)
+    try:
+        headers = {'Connection': 'close'}
+        response, content = client.request(query, headers=headers)
+
+        if response.status != 200: 
+            return None
+
+        ct = response.get('content-type', '')
+        if ';' in ct:
+            ct = ct[0:ct.find(';')]
+        ct = ct.strip()
+        if ct not in HTML_TYPES: 
+            return None
+
+        # parse html
+        links = []
+        parser = html5lib.HTMLParser(tree=treebuilders.getTreeBuilder("etree", etree),
+                                     namespaceHTMLElements=False)
+        html = parser.parse(content)
+        for link in html.find("head").findall("link"):
+            if link.get("rel", "").lower() == "alternate":
+                linktype = link.get("type", "").lower()
+                if linktype in FEED_TYPES:
+                    href = link.get("href", "")
+                    if href:
+                        links.append(href)
+        return links
+    except:
+        log.error("Error finding feed links at %s: %s" % (query, traceback.format_exc()))
+        return None
+    finally:
+        http.close_all(client)
+
+def verify_feed(request):
+    """
+    """
+    query = request.GET.get('url')
+
+    result = _feed_info(request, query)
+
+    if result is None or len(result) == 0: 
+        result = {'url': query, 'error': True}
+
+    return HttpResponse(json.dumps(result),
+                        content_type="application/json")
+
+def _feed_info(request, query):
+    if query is None:
+        return None
+
+    client = http.create_client(request.context.config)
+    try:
+        headers = {'Connection': 'close'}
+        response, content = client.request(query, headers=headers)
+
+        if response.status != 200: 
+            return None
+
+        ff = feedparser.parse(content)
+        if ff and 'feed' in ff and 'bozo_exception' not in ff:
+            return {'url': query,
+                    'error': False,
+                    'title': ff.feed.get('title', '')}
+        else:
+            return None
+
+    except:
+        log.error("Error verifying feed at %s: %s" % (query, traceback.format_exc()))
+        return None
+    finally:
+        http.close_all(client)
+
 ###############
     
 def message_rest(request, mailbox_slug, message_slug):

@@ -1,29 +1,29 @@
 from couchdb import Server, ResourceConflict, ResourceNotFound
 from datetime import datetime
 import hashlib
-from httplib2 import Http
 import logging
 import traceback
 
 from radarpost.feed import FEED_SUBSCRIPTION_TYPE, parse, update_feed_subscription, InvalidFeedError
+from radarpost import http
 from radarpost.mailbox import Subscription
 from radarpost import plugins
 from radarpost.agent.plugins import SUBSCRIPTION_UPDATE_HANDLER
 
 log = logging.getLogger(__name__)
 
-def poll_feed(mb, sub, http, force=False):
+def poll_feed(mb, sub, client, force=False):
     """
     poll a single feed in a single mailbox.
     
     mb - the mailbox to update 
     sub - the subscription document in the mailbox
-    http - an http client (httplib2)
+    client - an http client (httplib2)
     force - if true, try to update even if a previously 
             encountered result is fetched.
     """
     log.info("polling %s" % sub.url)
-    did_update, status, count = _try_poll_feed(mb, sub, http, force)
+    did_update, status, count = _try_poll_feed(mb, sub, client, force)
 
     if did_update:
         log.info("feed %s => created %d new items" % (sub.url, count))
@@ -47,10 +47,11 @@ def poll_feed(mb, sub, http, force=False):
                 break
     return 0
 
-def _try_poll_feed(mb, sub, http, force):
+def _try_poll_feed(mb, sub, client, force):
     try:
         # fetch the feed
-        response, content = http.request(sub.url)
+        headers = {'Connection': 'close'}
+        response, content = client.request(sub.url, headers=headers)
         log.info("feed %s => status %d" % (sub.url, response.status))
         if response.status != 200:
             return False, Subscription.STATUS_ERROR, 0
@@ -86,8 +87,9 @@ def poll_feed_sub(mb, sub, config):
         return False
     
     # sweet, go ahead...
-    http = Http(config.get('http_cache', None))
-    http.timeout = 15 
-    http.force_exception_to_status_code = True
-    poll_feed(mb, sub, http)
+    client = http.create_client(config)
+    try:
+        poll_feed(mb, sub, client)
+    finally:
+        http.close_all(client)
     return True

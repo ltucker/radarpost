@@ -27,7 +27,7 @@ def add_routes(mapper):
                   action="manage_subscriptions", controller=ui,
                   requirements=slug_req,
                   conditions={'method': ['GET']})
-
+    
     mapper.connect("manage_info", "/{mailbox_slug}/edit",
                 action="manage_info", controller=ui,
                 requirements=slug_req,

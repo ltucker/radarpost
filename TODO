@@ -1,14 +1,10 @@
 OPML import from UI
 Feed search UI - Javascript?
-UI security pass - hide what you can't do
-favicon
+UI title edit
 delete item UI
 sync mailboxes / user db command
 pubsubhub
-bottom of page styling
-confirm deletes
 titles are not CDATA
-export OPML link
 
 ===
 
@@ -30,8 +26,10 @@ basic filtering
 paver / installation
 split framework
 i18n
-
-
+check: sanitize titles etc or enforce text?
+allow parallelization of feed fetch
+ui support for very large number of subscriptions (filtered view, paging?)
+batch operations in ui
 
 === 
 ? head method supported on feeds?

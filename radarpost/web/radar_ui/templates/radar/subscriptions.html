@@ -1,69 +1,59 @@
 {% extends "radar/base_mailbox.html" %}
 
 {% block extra_head %}
-<script>
-    var mailbox_slug = "{{ mailbox_slug }}";
-</script>
-<script src="{{url_for('static_file', path="subscriptions.js")}}"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="{{url_for('static_file', path="subscriptions.js")}}"></script>
 {% endblock %}
 
 {% block content %}
-
 <div id="subscriptions">
-    <h1>Subscriptions</h1>
+    <h2>Subscriptions</h2>
     {% if user.has_perm(PERM_EDIT, mailbox) %}
-    <button class="add-subscription" title="New Subscription">
-        <span class="button-text">New Subscription</span>
+    <button class="add-subscription" title="Add / Import">
+        <span class="button-text">Add Subscriptions</span>
     </button>
     {% endif %}
+    
+    <a class="opml-link" 
+       href="{{ url_for('subscriptions_opml', mailbox_slug=mailbox_slug)}}">
+       Export OPML
+    </a>
 
     <table class="subscription-list">
-        <thead>
-            <tr>
-                <th class="title">Name</th>
-                {% if user.has_perm(PERM_EDIT, mailbox) %}
-                <th class="status">Status</th>
-                <th class="update">Last Update</th>
-                <th class="actions"></th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for sub in subscriptions %}
-            <tr id="{{sub.id}}">
-                <td class="title">
-                    {% if sub.url %}
-                    <a class="subscription-title" href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
-                    {% else %}
-                    <span class="subscription-title" title="{{sub.title}}">{{sub.title}}</span>
-                    {% endif %}
-                </td>
-                {% if user.has_perm(PERM_EDIT, mailbox) %}
-                <td class="status">
-                    {% if sub.status == 'error' %}
-                    <span class="subscription-error">Error</span>
-                    {% else %}
-                    <span class="subscription-ok">OK</span>
-                    {% endif %}
-                </td>
-                <td class="update">
-                    {{ sub.last_update|brief_date(TIME_ZONE) }}
-                </td>
-                <td class="actions">
-                    {% if user.has_perm(PERM_UPDATE, mailbox) %}
-                    <button class="edit-button" title="Edit">
-                        <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
-                    </button>
-                    <button class="delete-button" title="Delete">
-                        <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
-                    </button>
-                    {% endif %}
-                </td>
-                {% endif %}
-                
-            </tr>
-            {% endfor %}
-        </tbody>
+        {% include 'radar/subscriptions_table.html' %}
     </table>
+</div>
+<div id="add_subscriptions">
+    <form id="subscriptions_rest"
+     action="{{url_for('subscriptions_rest', mailbox_slug=mailbox_slug)}}">
+     </form>
+
+    <div>
+        <ul>
+            <li><a href="#feed_search">Feed Search</a></li>
+            <li><a href="#import_opml">Import OMPL</a></li>
+        </ul>
+    
+        <div id="feed_search">
+            <form action="#" method="GET">
+                <input id="feed_query" type="text" name="q" /><button class="search">search</button>
+                <span class="help">
+                    <p>Use the search box to find feeds.</p><p>Try things like:</p>
+                    <ul>
+                        <li><strong>feed urls</strong></li>
+                        <li><strong>blog urls</strong></li>
+                        <li><strong>general search terms or site names</strong></li>
+                    </ul>
+                    </p>
+                </span>
+            </form>
+            <table class="import-list">
+            </table>
+        </div>
+        
+        <div id="import_opml">
+            <h2>OPML Import</h2>
+        </div>
+    </div>
 </div>
 {% endblock %}

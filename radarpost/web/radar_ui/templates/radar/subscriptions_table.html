@@ -1,0 +1,46 @@
+<thead>
+    <tr>
+        <th class="title">Name</th>
+        {% if user.has_perm(PERM_EDIT, mailbox) %}
+        <th class="status">Status</th>
+        <th class="update">Last Update</th>
+        <th class="actions"></th>
+        {% endif %}
+    </tr>
+</thead>
+<tbody>
+    {% for sub in subscriptions %}
+    <tr id="{{sub.id}}">
+        <td class="title">
+            {% if sub.url %}
+            <a class="subscription-title" href="{{sub.url}}" title="{{sub.title}}">{{sub.title}}</a>
+            {% else %}
+            <span class="subscription-title" title="{{sub.title}}">{{sub.title}}</span>
+            {% endif %}
+        </td>
+        {% if user.has_perm(PERM_EDIT, mailbox) %}
+        <td class="status">
+            {% if sub.status == 'error' %}
+            <span class="subscription-error">Error</span>
+            {% else %}
+            <span class="subscription-ok">OK</span>
+            {% endif %}
+        </td>
+        <td class="update">
+            {{ sub.last_update|brief_date(TIME_ZONE) }}
+        </td>
+        <td class="actions">
+            {% if user.has_perm(PERM_UPDATE, mailbox) %}
+            <button class="edit-row" title="Edit">
+                <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
+            </button>
+            <button class="delete-row" title="Delete">
+                <a href="{{ url_for('subscription_rest', mailbox_slug=mailbox_slug, sub_slug=sub.id) }}"></a>
+            </button>
+            {% endif %}
+        </td>
+        {% endif %}
+        
+    </tr>
+    {% endfor %}
+</tbody>

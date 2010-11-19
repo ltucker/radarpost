@@ -7,10 +7,10 @@ import traceback
 from webob import Request, Response
 
 
-from radarpost.config import CONFIG_INI_PARSER_PLUGIN, parse_bool
+from radarpost.config import CONFIG_INI_PARSER_PLUGIN, parse_bool, config_section
 from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, InvalidArguments
 from radarpost import plugins
-from radarpost.web.context import RequestContext, build_routes, config_section
+from radarpost.web.context import RequestContext, build_routes
 from radarpost.web.context import check_http_auth, BadAuthenticator
 
 

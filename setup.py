@@ -39,9 +39,11 @@ setup(
         'Jinja2',
         'WebTest',
         'Beaker',
-	'Routes',
-	'CherryPy',
-	'pytz'
+	    'Routes',
+	    'CherryPy',
+	    'pytz',
+	    'html5lib',
+	    'TinfoilHat'
     ],
     dependency_links=[
     ],
@@ -53,9 +55,10 @@ setup(
     radarpost = radarpost.main:main
     
     [radarpost_plugins]
-    feed = radarpost.feed
-    commands = radarpost.cli
-    server = radarpost.web.app
     agents = radarpost.agent
+    commands = radarpost.cli
+    http = radarpost.http
+    feed = radarpost.feed
+    server = radarpost.web.app
     """,
 )
