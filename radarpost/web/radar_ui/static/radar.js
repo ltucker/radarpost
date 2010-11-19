@@ -44,3 +44,13 @@ var mark_odd = function(selector, classname) {
 var strip_tags = function(html) {
     return $('<div></div>').html(html).text();
 };
+
+var file_upload_callback = function(target, callback) {
+    $(target).load(function() {
+        var raw_result = $(target).contents().find('body').text();
+        var result = $.parseJSON(raw_result);
+        if (result != null) {
+            callback(result);
+        }
+    });
+};

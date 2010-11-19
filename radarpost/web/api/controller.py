@@ -512,6 +512,9 @@ def _create_subscriptions_json(request, mailbox_slug):
         
         sub = Subscription.create_type(sub_type)
         sub.user_update(params)
+        if not sub.title: 
+            sub.title = "Untitled"
+        
         sub.store(mb)
         return HttpResponse(json.dumps({'slug': sub.id}),
                             content_type='application/json',
@@ -770,6 +773,24 @@ def _feeds_in_opml(opml):
 ###############
 # feed search / discovery
 
+def feed_links_opml(request):
+    try:
+        opmldata = request.POST['opmlfile']
+        result = {}
+        result['links'] = [{'url': url, 'title': title} for (url, title) in 
+                           _feeds_in_opml(opmldata.file.read()).items()];
+        result['error'] = False
+    except: 
+        log.error("error parsing opml: %s" % traceback.format_exc())
+        result = {'links': [], 'error': True}
+
+    template_info = TemplateContext(request,
+        {'result': json.dumps(result)})
+    res = HttpResponse(content_type='text/html')
+    res.charset = 'utf-8'
+    res.unicode_body = request.context.render('radar/ajax_upload.html', template_info)
+    return res
+
 def feed_links_html(request):
     query = request.GET.get('url')
 
@@ -815,7 +836,8 @@ def _feed_links_html(request, query):
                 if linktype in FEED_TYPES:
                     href = link.get("href", "")
                     if href:
-                        links.append(href)
+                        feed_item = {'url': href, 'title': link.get("title", "")}
+                        links.append(feed_item)
         return links
     except:
         log.error("Error finding feed links at %s: %s" % (query, traceback.format_exc()))

@@ -68,3 +68,6 @@ def add_routes(mapper):
     
     mapper.connect("feed_links_html", "/feedsearch/html",
                    action="feed_links_html", controller=api)
+    
+    mapper.connect("feed_links_opml", "/feedsearch/opml",
+                   action="feed_links_opml", controller=api)

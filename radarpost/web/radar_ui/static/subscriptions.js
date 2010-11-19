@@ -217,7 +217,7 @@ var proxy_check_feed_list = function(links, callback) {
 
         if (i < links.length) {
             /* recurse to check next feed */
-            proxy_check_feed(links[i], get_results);
+            proxy_check_feed(links[i].url, get_results);
         }
         else {
             /* done, hand it back */
@@ -462,6 +462,11 @@ var setup_subscriptions_dialog = function() {
     $('#feed_search button.search').click(do_feed_search);
     $('#feed_search form').submit(do_feed_search);
     $('#feed_search button.cancel').live('click', cancel_feed_search);
+
+    /* OPML */
+    file_upload_callback("#opmldata", function(results) {
+        setup_import_list('#import_opml .import-list', results.links);
+    });
 };
 
 

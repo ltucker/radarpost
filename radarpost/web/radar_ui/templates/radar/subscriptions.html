@@ -52,7 +52,19 @@
         </div>
         
         <div id="import_opml">
-            <h2>OPML Import</h2>
+            <iframe id="opmldata" name="opmldata" style="display: none"></iframe>
+            <form action="{{ url_for('feed_links_opml') }}" 
+                  method="POST" enctype="multipart/form-data"
+                  encoding="mutlipart/form-data"
+                  target="opmldata">
+                <div>
+                    <label for="opmlfile">OPML File</label>
+                    <input id="opmlfile" type="file" name="opmlfile" />
+                </div>
+                <input type="submit" name="submit" value="Upload" />
+            </form>
+            <table class="import-list">
+            </table>
         </div>
     </div>
 </div>

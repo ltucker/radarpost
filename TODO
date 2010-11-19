@@ -1,10 +1,11 @@
 OPML import from UI
-Feed search UI - Javascript?
-UI title edit
+UI title edit for mailboxes
 delete item UI
 sync mailboxes / user db command
 pubsubhub
-titles are not CDATA
+titles are not CDATA?
+cleanup / document feed search api
+delete mailboxes (from edit? directory?)
 
 ===
 
@@ -30,6 +31,7 @@ check: sanitize titles etc or enforce text?
 allow parallelization of feed fetch
 ui support for very large number of subscriptions (filtered view, paging?)
 batch operations in ui
+progress and force update in subscriptons display
 
 === 
 ? head method supported on feeds?
