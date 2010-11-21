@@ -40,7 +40,25 @@ If you get sick of saying -Csrc/radarpost/radar.ini, you can set the RADAR_CONFI
 Okay, now what?
 ===============
 
-Well, things are a bit incomplete, but if something cannot be done with the user interface, it may already have an API you can hit with curl, or a command line function to help out.  Here's an example of settings up a new mailbox and getting some feeds in from the command line.
+Now you can visit your site and login with the user you created above.  You should be able to create new aggregations and import feeds through the user interface.  
+
+Updating
+========
+
+Updates are still performed manually, you can update everything by running::
+
+    $ radarpost update --all
+    ...
+    INFO:radarpost.agent.feed:polling http://www.example.com/feeds/12
+    ...
+
+You may find it useful to call this periodically using cron.
+
+
+Using the API
+=============
+
+You can find more detailed information in the included API.rst.  Here is a quick example to get you started:
 
 Create a mailbox:: 
 
@@ -57,13 +75,7 @@ Import feeds from an OMPL file::
     ...
     {"deleted": 0, "errors": 0, "imported": 428}
 
-Now update the feeds::
 
-    $ radarpost update funfeeds -Csrc/radarpost/radar.ini
-    
-    INFO:radarpost.agent.feed:polling http://www.example.com/feeds/12
-    ...
-    
     
 Running Tests
 =============
@@ -80,4 +92,3 @@ To run the tests, run `nosetests` from the radarpost source folder::
     $ nosetests
     ...
     
-

@@ -447,3 +447,60 @@ Results
 200 - success
 404 - the mailbox or subscription does not exist
 400 - update failed, invalid info
+
+===============
+Feed Search API
+=============== 
+
+GET /feedsearch/feed 
+====================
+
+Checks for an Atom, RSS etc feed document directly available at the url specified.
+
+parameters: 
+url - the url to chek 
+
+Response Body
+-------------
+
+of the form: 
+{"links": [{"url": "http://example.com/feed/1", "title": "The Feed's title"}]}
+
+
+GET /feedsearch/html
+====================
+
+Search a web page for links to feeds.  Looks for link rel="alternate"
+with appropriate type.  Titles returned are those listed in the html
+not the feed itself and are often not provided.
+
+Response Body
+------------
+
+list of the form: 
+{"links": [{"url": "http://www.example.org/feed/2", "title": "Feed Title"}, ...]}
+
+POST /feedsearch/opml
+=====================
+
+Find the feed links listed in an OPML file.  Titles are taken from 
+those listed in the OPML file.
+
+Request Body 
+------------
+The request may be made by posting a form with multipart/formdata, a field "opmlfile" should contain the opml data file upload.
+
+
+Response Body 
+-------------
+
+of the form:
+{ "links": [{"url": "http://www.example.org/feed/2", "title": "Feed Title"}]}
+  
+if a multipart/formdata request is POSTed, the result is wrapped in html 
+to facilitate asynchronously loading the result into an iframe using a 
+browser, eg:
+
+<html><head></head><body>
+{&#34;links&#34;: [{&#34;url&#34;: &#34;http://example.com/feeds/1&#34;, &#34;title&#34;: &#34;Example Feed&#34;}]}
+</body></html>

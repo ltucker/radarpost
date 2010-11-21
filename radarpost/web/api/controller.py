@@ -853,8 +853,10 @@ def verify_feed(request):
     result = _feed_info(request, query)
 
     if result is None or len(result) == 0: 
-        result = {'url': query, 'error': True}
-
+        result = {'links': [], 'error': True}
+    else: 
+        result = {'links': [result], 'error': False}
+    
     return HttpResponse(json.dumps(result),
                         content_type="application/json")
 
@@ -873,7 +875,6 @@ def _feed_info(request, query):
         ff = feedparser.parse(content)
         if ff and 'feed' in ff and 'bozo_exception' not in ff:
             return {'url': query,
-                    'error': False,
                     'title': ff.feed.get('title', '')}
         else:
             return None

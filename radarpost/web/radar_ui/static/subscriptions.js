@@ -158,7 +158,15 @@ var setup_subscriptions_table = function() {
 
 var gfeed_search_feed_url = function(query, callback) {
     /********
-     * look for feeds directly at the URL specified 
+     * check for a feed document at the url specified using
+     * google's feed retrieval API
+     * 
+     * query - url to check 
+     *
+     * calls callback with list of objects with feed 
+     * information, eg:
+     * [{url: "http://example.org/feeds/1", title: "Feed Title"}, ...]
+     * 
      *********/
     var feed = new google.feeds.Feed(query);
     feed.setNumEntries(1);
@@ -167,121 +175,21 @@ var gfeed_search_feed_url = function(query, callback) {
             callback([{
                 url: query,
                 title: result.title,
-                error: false
             }]);
         }
         else {
-            /* oh well, just hand it back*/
-            callback([{url: query, 
-                       error: true
-                      }]);
-        }    
+            callback([]);
+        }
     });
 };
 
-var proxy_check_feed = function(query, callback) {
-    $.ajax({
-        type: 'GET',
-        url: '/feedsearch/feed',
-        data: {url: query},
-        dataType: 'json',
-        success: function(data, status, req) {
-            if (req.status == 200) {
-                callback(data);
-            }
-            else {
-                callback({url: query,
-                          error: true
-                          });
-            }
-        },
-        error: function() {
-            callback({url: query, 
-                      error: true
-                      });        
-        }});
-};
-
-var proxy_check_feed_list = function(links, callback) {
-    /* check all feed links given with a chain of 
-     * feed verificaitons accumulated into a list.
-     */
-    var i = 0; 
-    var feeds = [];
-    
-    var get_results = function(result) {
-        if (typeof result != "undefined") {
-            feeds.push(result);
-            i += 1;
-        }
-
-        if (i < links.length) {
-            /* recurse to check next feed */
-            proxy_check_feed(links[i].url, get_results);
-        }
-        else {
-            /* done, hand it back */
-            callback(feeds);
-        }
-    };
-    get_results();    
-};
-
-var proxy_html_links = function(query, callback) {
-    $.ajax({
-        type: 'GET',
-        url: '/feedsearch/html',
-        data: {url: query},
-        dataType: 'json',
-        success: function(data, status, req) {
-            if (req.status == 200) {
-                callback(data);
-            }
-            else {
-                callback([{links: [],
-                           error: true
-                          }]);
-            }
-        },
-        error: function() {
-            callback([{links: [],
-                       error: true
-                      }]);        
-        }});
-}
-
-var proxy_feed_search_url = function(query, callback) {
-    /*********************************************
-     * use server as a proxy to search for feeds. 
-     *********************************************/
-     
-     /* try looking for a feed */
-     proxy_check_feed(query, function(results) {
-         if (results.error == true) {
-             /* try looking for html links */
-            proxy_html_links(query, function(results) {
-                if (results.error == true || results.links.length == 0) {
-                    /* no dice */
-                    callback([{url: query, error: true}]) 
-                }
-                else {
-                    proxy_check_feed_list(results.links, callback);
-                }
-            })
-         }
-         else {
-             callback([results]);
-         }
-     })
-};
-
-var feed_search_query = function(query, callback) {
-    /*******************************
-    * search for feeds with google
-    ********************************/
+var gfeed_search_query = function(query, callback) {
+    /**************************************
+    * searches for feeds using google query
+    ***************************************/
     google.feeds.findFeeds(query, function(result) {
         if (result.error || result.entries.length == 0) {
-            callback([{url: query, error: true}]);
+            callback([]);
         }
         else {
             var feeds = [];
@@ -294,9 +202,128 @@ var feed_search_query = function(query, callback) {
     });
 };
 
+var proxy_check_feed = function(query, callback) {
+    /**
+    * check for a feed at the url specified using 
+    * the server side. 
+    * 
+    * query - url of feed document to check
+    * 
+    * calls callback with info about feed, eg:
+    * {url: "http://example.com/feeds/1", title: "Feed Title"}
+    * 
+    * if there was no feed found, the object will have an error
+    * field set eg: 
+    * {url: "http://example.com/feeds/2", error: true} 
+    */
+    $.ajax({
+        type: 'GET',
+        url: '/feedsearch/feed',
+        data: {url: query},
+        dataType: 'json',
+        success: function(data, status, req) {
+            if (req.status == 200 && data.error == false) {
+                callback(data.links);
+            }
+            else {
+                callback([]);
+            }
+        },
+        error: function() {
+            callback([]);
+        }});
+};
+
+var proxy_check_feed_list = function(links, callback) {
+    /* check all feed links given with a chain of 
+     * feed verificaitons on the server accumulated into a list.
+     *
+     * calls callback with a list of feed info objects, eg:
+     * [{url: "http://example.org/feeds/1", title: "Feed Title"},
+     *  ...]
+     */
+    var i = 0; 
+    var feeds = [];
+    
+    var get_results = function(result) {
+        if (typeof result != "undefined") {
+            if (result.length > 0) {
+                feeds.push(result[0]);
+            }
+            i += 1;
+        }
+
+        if (i < links.length) {
+            /* recurse to check next feed */
+            proxy_check_feed(links[i].url, get_results);
+        }
+        else {
+            /* done, hand it back */
+            callback(feeds);
+        }
+    };
+    get_results();
+};
+
+var proxy_html_feed_links = function(query, callback) {
+    /**
+    * checks an html page for links to feeds on the server
+    * end.
+    *
+    * calls callback with a list of feed info objects, eg:
+    * [{url: "http://example.org/feeds/1", title: "Feed Title"},
+    *  ...]
+    * 
+    */
+    $.ajax({
+        type: 'GET',
+        url: '/feedsearch/html',
+        data: {url: query},
+        dataType: 'json',
+        success: function(data, status, req) {
+            if (req.status == 200) {
+                callback(data.links);
+            }
+            else {
+                callback([]);
+            }
+        },
+        error: function() {
+            callback([]);
+        }});
+};
+
+var proxy_feed_search_url = function(query, callback) {
+    /*********************************************
+     * use server as a proxy to search for feeds -- 
+     * either as a direct feed or for links in html. 
+     *********************************************/
+     
+     /* try looking for a feed */
+     proxy_check_feed(query, function(results) {
+         if (results.length == 0) {
+             /* try looking for html links */
+            proxy_html_feed_links(query, function(results) {
+                if (results.length == 0) {
+                    /* no dice */
+                    callback([]);
+                }
+                else {
+                    proxy_check_feed_list(results, callback);
+                }
+            });
+         }
+         else {
+             callback(results);
+         }
+     });
+};
+
+
 var feed_search = function(query, callback) {  
     /*************************************************
     * chains together many methods of feed searching
+    * 
     **************************************************/
 
     /* support feed pseudo-scheme */
@@ -307,7 +334,7 @@ var feed_search = function(query, callback) {
     if (query.match(/^http\:\/\//)) {
         gfeed_search_feed_url(query, function(results) {
             /* if no feed was found, try html */
-            if (results.length == 1 && results[0].error == true) {
+            if (results.length == 0) {
                 proxy_feed_search_url(query, callback);
             }
             else {
@@ -317,7 +344,7 @@ var feed_search = function(query, callback) {
     }
     /* try a google search if this is not url-ish */
     else {
-        feed_search_query(query, callback);
+        gfeed_search_query(query, callback);
     }
 };
 
