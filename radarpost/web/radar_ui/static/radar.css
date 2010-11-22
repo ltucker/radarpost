@@ -512,7 +512,7 @@ table.import-list tbody tr.odd {
 }
 
 table.import-list .actions {
-    width: 16px;
+    width: 32px;
 }
 
 table.import-list .title {
@@ -520,7 +520,7 @@ table.import-list .title {
 }
 
 table.import-list .url {
-    width: 324px;
+    width: 308px;
 }
 
 table.import-list button.delete-row {
