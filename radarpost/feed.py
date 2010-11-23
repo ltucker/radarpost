@@ -39,8 +39,8 @@ class FeedSubscription(Subscription):
 
     def reset(self):
         super(FeedSubscription, self).reset()
-        last_ids = []
-        last_digest = None
+        self.last_ids = []
+        self.last_digest = None
 
 @plugins.plugin(Subscription.SUBTYPE_PLUGIN)
 def create_feedsub(typename):

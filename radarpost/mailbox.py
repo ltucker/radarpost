@@ -136,8 +136,8 @@ class Subscription(DowncastDoc):
         called to reset any subscription state associated with this
         subscription.
         """
-        last_update = None
-        status = None
+        self.last_update = None
+        self.status = None
 
 class MailboxInfo(RadarDocument):
     """
