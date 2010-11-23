@@ -8,8 +8,9 @@ from radarpost import plugins
 __all__ = ['Message', 'SourceInfo', 'Subscription', 'MailboxInfo', 
            'MESSAGE_TYPE', 'SUBSCRIPTION_TYPE', 'MAILBOXINFO_TYPE', 
            'MAILBOXINFO_ID', 'DESIGN_DOC', 'DESIGN_DOC_PLUGIN', 
-           'create_mailbox', 'is_mailbox', 'bless_mailbox', 'iter_mailboxes',
-           'trim_mailbox', 'refresh_views', 'get_json_raw_url']
+           'create_mailbox', 'is_mailbox', 'bless_mailbox', 'sync_mailbox',
+           'iter_mailboxes', 'trim_mailbox', 'trim_subscription',
+           'refresh_views', 'get_json_raw_url']
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +102,8 @@ class Message(DowncastDoc):
 
     # helpful view constants
     by_timestamp = '_design/mailbox/_view/messages_by_timestamp'
-
+    by_subscription = '_design/mailbox/_view/messages_by_subscription'
+    
     SUBTYPE_PLUGIN = 'radar.mailbox.mailbox_subtype'
     SUBTYPE_FIELD = 'message_type'
 
@@ -128,6 +130,14 @@ class Subscription(DowncastDoc):
     SUBTYPE_FIELD = 'subscription_type'
 
     user_updatable = ('title', )
+
+    def reset(self):
+        """
+        called to reset any subscription state associated with this
+        subscription.
+        """
+        last_update = None
+        status = None
 
 class MailboxInfo(RadarDocument):
     """
@@ -183,9 +193,9 @@ def bless_mailbox(db):
     """
     info = MailboxInfo()
     info.store(db)
-    update_mailbox(db)
+    sync_mailbox(db)
 
-def update_mailbox(db):
+def sync_mailbox(db):
     """
     update database design document and other
     metadata.  This operation unconditionally
@@ -274,6 +284,65 @@ def trim_mailbox(mb, max_age, batch_size=100):
         refresh_views(mb)
 
     return deletes
+    
+def trim_subscription(mb, sub, max_entries, batch_size=100):
+    """
+    trims an individual subscription to a maximum number of 
+    items (by age)
+    """
+    
+    params = {}
+    params['startkey'] = [sub.id, {}]
+    params['endkey'] = [sub.id]
+    params['descending'] = True
+    # we ask for one more to indicate where to start the next batch
+    params['limit'] = batch_size + 1
+
+    done = False
+    deletes = 0
+    errors = 0
+    skips = 0
+    
+    while not done:
+        updates = []
+        for index, mrow in enumerate(mb.view(Message.by_subscription, **params)):
+            if index == batch_size:
+                # this is the row we want as the first element of the next batch
+                params['startkey_docid'] = mrow.id
+                params['startkey'] = mrow.key
+                break
+
+            updates.append({'_id': mrow.id, 
+                            '_rev': mrow.value['_rev'],
+                            '_deleted': True})
+
+        # if we ran out of items, we're done.
+        if len(updates) < batch_size: 
+            done = True
+
+        # if we are still skipping items
+        # skip as many as we can using this 
+        # batch.
+        if skips < max_entries:
+            clip = min(len(updates), max_entries - skips)
+            updates = updates[clip:]
+            skips += clip
+        
+        # nothing to update this pass, continue
+        if len(updates) == 0:
+            continue
+            
+        # do any deletes for this batch.
+        for (success, did, rev_exc) in mb.update(updates): 
+            if success:
+                deletes += 1
+            else:
+                errors += 1
+        
+        # don't get too out of date while doing this.
+        refresh_views(mb)
+
+    return deletes
 
 def refresh_views(mb):
     for dd in plugins.get(DESIGN_DOC_PLUGIN):
@@ -315,6 +384,17 @@ DESIGN_DOC = {
                     }
                     else {
                         return values.length;
+                    }
+                }
+                """
+        },
+        
+        'messages_by_subscription': {
+            'map':
+                """
+                function(doc) {
+                    if (doc.type == 'message') {
+                        emit([doc.source.subscription_id, doc.timestamp], {'_rev': doc._rev});
                     }
                 }
                 """

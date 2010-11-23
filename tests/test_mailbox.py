@@ -65,5 +65,72 @@ def test_mailbox_trim():
     for m in messages[5:]:
         assert not m.id in mb
 
+def test_mailbox_trim_sub():
+    """
+    test trimming down a subscription to a maximum number of items.
     
+    create a mailbox
+    add some dated messages associated with some subscriptions.
+    trim down one of the subscriptions
+    check that old messages are gone and everything else remains
+    """
+    from datetime import datetime, timedelta
+    from radarpost.mailbox import Message, Subscription, trim_subscription
+    
+    # create a mailbox 
+    mb = create_test_mailbox()
+    sub0 = 'sub0'
+    sub1 = 'sub1'
+    sub2 = 'sub2'
+    
+    # insert 10 messages, each one day older 
+    # than the next, starting with today.
+    now = datetime.utcnow()
+    delta = timedelta(days=-1)
+    cur = now
+    messages = []
+    other_messages = []
+    
+    for i in range(125):
+        m = Message()
+        m.timestamp = cur
+        m.source.subscription_id = sub1
+        m.store(mb)
+        messages.append(m)
+       
+        # create some similar messages belonging to 
+        # different subscriptions bookending the one
+        # we are going to delete from.
+        m2 = Message()
+        m2.timestamp = cur
+        m2.source.subscription_id = sub0
+        m2.store(mb)
+        other_messages.append(m2)
+
+        m2 = Message()
+        m2.timestamp = cur
+        m2.source.subscription_id = sub2
+        m2.store(mb)
+        other_messages.append(m2)
+        
+        cur += delta
+
+    # all messages should be in the mailbox now
+    for m in messages:
+        assert m.id in mb
+    for m in other_messages:
+        assert m.id in mb
+    
+    subscription = Subscription(id=sub1)
+    trim_subscription(mb, subscription, max_entries=51, batch_size=25)
+    
+    for i, m in enumerate(messages[:51]):
+        assert m.id in mb
+
+    for i, m in enumerate(messages[51:]):
+        assert not m.id in mb
+
+    # irrelevant messages should not have been touched.
+    for m in other_messages:
+        assert m.id in mb
     

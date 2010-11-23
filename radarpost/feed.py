@@ -37,6 +37,11 @@ class FeedSubscription(Subscription):
 
     user_updatable = Subscription.user_updatable + ('url', )
 
+    def reset(self):
+        super(FeedSubscription, self).reset()
+        last_ids = []
+        last_digest = None
+
 @plugins.plugin(Subscription.SUBTYPE_PLUGIN)
 def create_feedsub(typename):
     if typename == FEED_SUBSCRIPTION_TYPE: 
@@ -80,6 +85,11 @@ class SourceFeedInfo(SourceInfo):
     title = TextField()
     links = ListField(DictField(Link))
     updated = DateTimeField()
+    
+    # the exact url the item was fetched
+    # from (may differ from feed's self
+    # identified canonical URL)
+    feed_url = TextField()
 
 class AtomEntry(Message):
 
@@ -209,6 +219,7 @@ def create_atom_entry(entry, feed, subscription, message=None):
     message.source.subscription_id = subscription.id
     message.source.subscription_type = subscription.subscription_type
     message.source.subscription_title = subscription.title
+    message.source.feed_url = subscription.url
 
     # retain source information
     if ('source' in entry and 

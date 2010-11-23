@@ -53,6 +53,12 @@ class MailboxHelper(object):
         log.info('%s: no update handler for subscription "%s" of type "%s"' % 
                  (mb.name, sub.id, sub.subscription_type))
         return False
+        
+    def _reset_subscription(self, mailbox, sub):
+        log.info("Resetting subscription %s / %s" % (mailbox.name, sub.id))
+        trim_subscription(mailbox, sub, max_entries=0)
+        sub.reset()
+        sub.store(mailbox)
 
 class MailboxesCommand(BasicCommand, MailboxHelper):
 
@@ -93,56 +99,53 @@ class UpdateSubscriptionsCommand(MailboxesCommand):
 
 plugins.register(UpdateSubscriptionsCommand, COMMANDLINE_PLUGIN)
 
-class UpdateSubscriptionCommand(BasicCommand, MailboxHelper):
+class ResetSubscriptionsCommand(MailboxesCommand):
+
+    command_name = 'reset'
+    description = 'discard items and reset all subscriptions in a set of mailboxes'
+
+    def __call__(self, mailboxes=None, update_all=False):
+        """
+        update all subscriptions in the given list of mailboxes.
+        mailboxes - list of mailboxes to update (slugs)
+        update_all - update all mailboxes
+        """
+        for mb in self._get_mailboxes(mailboxes, get_all=update_all):
+            for sub in Subscription.view(mb, Subscription.by_type, include_docs=True):
+                try:
+                    self._reset_subscription(mb, sub)
+                except KeyboardInterrupt: 
+                    log.error("Exiting at user request...")
+                    return
+                except: 
+                    log.error('%s: error resetting subscription "%s" of type "%s": %s' % 
+                        (mb.name, sub.id, sub.subscription_type, traceback.format_exc()))
+
+plugins.register(ResetSubscriptionsCommand, COMMANDLINE_PLUGIN)
+
+class SyncCommand(MailboxesCommand):
     
-    command_name = 'update_sub'
-    description = 'update a particular subscription in a mailbox'
+    command_name = 'sync'
+    description = 'update mailboxes to the latest version of design docs, etc.'
 
     @classmethod
     def setup_options(cls, parser):
-        parser.set_usage(r"%prog " + "%s mailbox [options]" % cls.command_name)
-        parser.add_option('--id', dest="sub_id", help="specify subscription by id")
-        parser.add_option('--feed', dest="feed_url", help="specify subscription by feed url")
+        super(SyncCommand, cls).setup_options(parser)
+        parser.add_option('--refresh', action='store_true', dest="refresh", default=False, help="refresh views after sync")
 
-    def __call__(self, mailbox, sub_id=None, feed_url=None):
-        """
-        update the specified subscription in the mailbox specified 
-        mailbox - the slug of the mailbox to update
-        sub_id - specify subscription by id
-        feed_url - specify subscription by feed_url
-        """
-        mb = self._get_mailbox(mailbox)
-        if mb is None:
-            return 1
-        if feed_url is not None and sub_id is not None:
-            raise InvalidArguments("You may only specify one subscription")
+    def __call__(self, mailboxes=None, update_all=False, refresh=False):
+        for mb in self._get_mailboxes(mailboxes, get_all=update_all):
+            try:
+                log.info("Syncing mailbox %s" % mb.name)
+                sync_mailbox(mb)
+                if refresh:
+                    refresh_views(mb)
+            except:
+                log.error("Error syncing mailbox %s: %s" % (mb.name, traceback.format_exc()))
 
-        if feed_url is not None:
-            params = {
-                'include_docs': True,
-                'startkey': feed_url,
-                'endkey': feed_url
-            }
-            sub = None
-            for sub in Subscription.view(mb, FeedSubscription.by_url, **params):
-                break
-    
-            if sub is None:
-                print "No subscription with url %s in mailbox %s" % (feed_url, mb.name)
-            else: 
-                print "Found subscription for %s (%s)" % (feed_url, sub.id)
-                self._update_subscription(mb, sub)
-        elif sub_id is not None:
-            sub = Subscription.load(mb, sub_id)
-            if sub is None or not sub.type == SUBSCRIPTION_TYPE: 
-                print "No subscription with id %s found in mailbox %s" % (sub_id, mb.name)
-            else: 
-                print "Found subscription for %s" % sub_id
-                self._update_subscription(mb, sub)
-        else:
-            raise InvalidArguments("You must specify a subscription")
+plugins.register(SyncCommand, COMMANDLINE_PLUGIN)
 
-plugins.register(UpdateSubscriptionCommand, COMMANDLINE_PLUGIN)
+
 
 class TrimCommand(MailboxesCommand):
 
@@ -211,3 +214,90 @@ class CompactCommand(MailboxesCommand):
                 except: 
                     log.error("Error compacting mailbox %s / view %s: %s" % (mb.name, ddid, traceback.format_exc()))
 plugins.register(CompactCommand, COMMANDLINE_PLUGIN)
+
+
+class SubscriptionCommand(BasicCommand, MailboxHelper):
+    """
+    base class for commands that do something witha a 
+    single subscription in a mailbox.
+    """
+
+    @classmethod
+    def setup_options(cls, parser):
+        parser.set_usage(r"%prog " + "%s mailbox [options]" % cls.command_name)
+        parser.add_option('--id', dest="sub_id", help="specify subscription by id")
+        parser.add_option('--feed', dest="feed_url", help="specify subscription by feed url")
+
+    def run(self, args, options):
+        kw = self.clean_options(options)
+        if len(args) != 1: 
+            self.print_usage()
+            return 1
+        try:
+            return self._call_by_names(args[0], **kw)
+        except TypeError:
+            self.print_usage()
+
+    def _call_by_names(self, mailbox, sub_id=None, feed_url=None, **kw):
+        """
+        run this command on the mailbox and subscription specified 
+        by names.
+
+        mailbox - the slug of the mailbox to update
+        sub_id - specify subscription by id
+        feed_url - specify subscription by feed_url
+        """
+        mb = self._get_mailbox(mailbox)
+        if mb is None:
+            return 1
+        if feed_url is not None and sub_id is not None:
+            raise InvalidArguments("You may only specify one subscription")
+
+        if feed_url is not None:
+            params = {
+                'include_docs': True,
+                'startkey': feed_url,
+                'endkey': feed_url
+            }
+            sub = None
+            for sub in Subscription.view(mb, FeedSubscription.by_url, **params):
+                break
+
+            if sub is None:
+                print "No subscription with url %s in mailbox %s" % (feed_url, mb.name)
+            else: 
+                print "Found subscription for %s (%s)" % (feed_url, sub.id)
+                # call self
+                self(mb, sub, **kw)
+        elif sub_id is not None:
+            sub = Subscription.load(mb, sub_id)
+            if sub is None or not sub.type == SUBSCRIPTION_TYPE: 
+                print "No subscription with id %s found in mailbox %s" % (sub_id, mb.name)
+            else: 
+                print "Found subscription for %s" % sub_id
+                # call self
+                self(mb, sub, **kw)
+        else:
+            raise InvalidArguments("You must specify a subscription")
+
+
+class UpdateSubscriptionCommand(SubscriptionCommand):
+    
+    command_name = 'update_sub'
+    description = 'update a particular subscription in a mailbox'
+
+    def __call__(self, mailbox, subscription):
+        return self._update_subscription(mailbox, subscription)
+plugins.register(UpdateSubscriptionCommand, COMMANDLINE_PLUGIN)
+
+
+class ResetSubscriptionCommand(SubscriptionCommand):
+    
+    command_name = 'reset_sub'
+    description = 'reset a particular subscription in a mailbox, discard current items.'
+
+    def __call__(self, mailbox, subscription):
+        return self._reset_subscription(mailbox, subscription)
+plugins.register(ResetSubscriptionCommand, COMMANDLINE_PLUGIN)
+
+

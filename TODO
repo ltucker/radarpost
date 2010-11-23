@@ -1,15 +1,14 @@
 UI title edit for mailboxes
 delete item UI
-sync mailboxes / user db command
 pubsubhub
 titles are not CDATA?
-cleanup / document feed search api
 feed search api tests
 delete mailboxes (from edit? directory?)
 text for empty aggregations.
 
 ===
 
+detect / eliminate orphan items
 security testing
 database level validation / security
 create users UI
