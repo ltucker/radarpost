@@ -48,6 +48,10 @@ def load_config(*filenames):
             else: 
                 config['%s.%s' % (section, key)] = val
 
+    # there may need to be a pre-configuration step here to 
+    # enable / disable plugins based on configuration before
+    # running config plugins.
+
     for parser in plugins.get(CONFIG_INI_PARSER_PLUGIN):
         parser(config)
 

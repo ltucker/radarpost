@@ -1,4 +1,6 @@
+import os
 from os import path
+from os.path import dirname as dn
 import copy
 from couchdb import Server
 from couchdb.http import PreconditionFailed
@@ -8,29 +10,41 @@ import random
 import struct
 
 from radarpost.mailbox import create_mailbox as _create_mailbox
+from radarpost.config import load_config
 
-
-TEST_DATA_DIR = path.join(path.dirname(__file__), 'data')
+TEST_INI_KEY = 'RADAR_TEST_CONFIG'
+DEFAULT_RADAR_TEST_CONFIG = path.join(dn(dn(dn(__file__))), 'test.ini')
+TEST_DATA_DIR = path.join(dn(__file__), 'data')
 TEST_MAILBOX_ID = 'rp_test_mailbox'
-TEST_SERVER = 'http://localhost:5984'
-TEST_USERS_DB = 'rp_test_users'
 
+def get_config_filename():
+    filename = os.environ.get('RADAR_TEST_CONFIG', None)
+    if filename is None:
+        filename = DEFAULT_RADAR_TEST_CONFIG
+    return filename
+
+def load_test_config():
+    return load_config(get_config_filename())
 
 def get_data(filename):
     return open(path.join(TEST_DATA_DIR, filename)).read()
 
-
-def create_test_mailbox(name=TEST_MAILBOX_ID, server=TEST_SERVER):
+def create_test_mailbox(config=None, name=TEST_MAILBOX_ID):
+    if config is None: 
+        config = load_test_config()
     try:
-        couchdb = Server(server)
+        couchdb = Server(config['couchdb.address'])
         return _create_mailbox(couchdb, name)
     except PreconditionFailed:        
         del couchdb[name]
         return _create_mailbox(couchdb, name)
 
-def create_test_users_db(name=TEST_USERS_DB, server=TEST_SERVER):
+def create_test_users_db(config=None):
+    if config is None: 
+        config = load_test_config()
+    name = config['couchdb.users_database']
     try:
-        couchdb = Server(server)
+        couchdb = Server(config['couchdb.address'])
         return couchdb.create(name)
     except PreconditionFailed:        
         del couchdb[name]

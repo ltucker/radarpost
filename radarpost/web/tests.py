@@ -4,6 +4,7 @@ from routes.util import URLGenerator
 from unittest import TestCase
 from radarpost.mailbox import create_mailbox as _create_mailbox
 from radarpost.user import User, ROLE_ADMIN
+from radarpost.tests.helpers import load_test_config
 from radarpost.web.context import build_routes
 from radarpost.web.context import get_couchdb_server, get_database_name
 from radarpost.web.context import get_mailbox
@@ -17,22 +18,9 @@ class RadarTestCase(TestCase):
     """
     
     TEST_MAILBOX_SLUG = '__rp_test_mailbox'
-    TEST_USERS_DB = 'rp_test_users'
-    TEST_ADMIN_USER = 'rp_test_admin'
-    TEST_ADMIN_PASSWORD = 'fr3d'
 
     def setUp(self):
-        # XXX load it!
-        self.config = {'web.apps': ['radarpost.web.api'], 
-                       'web.debug': True,
-                       'web.static_files_url': '/static',
-                       'beaker.session.type': 'memory', 
-                       'couchdb.users_database': self.TEST_USERS_DB,
-                       'couchdb.address': 'http://localhost:5984',
-                       'couchdb.prefix': 'radar/',
-                       'timezone': 'US/Eastern'
-                       }
-
+        self.config = load_test_config()
         self.url_gen = URLGenerator(build_routes(self.config), {})
 
         # set-up users database
@@ -43,13 +31,14 @@ class RadarTestCase(TestCase):
         self._users_db = couchdb.create(dbname)
         
         # create an admin
-        admin = User(username=self.TEST_ADMIN_USER,
-                     password=self.TEST_ADMIN_PASSWORD)
+        admin = User(username=self.config['test.admin_user'],
+                     password=self.config['test.admin_password'])
         admin.roles = [ROLE_ADMIN]
         admin.store(self._users_db)
 
     def login_as_admin(self, app):
-        return self.login_as(self.TEST_ADMIN_USER, self.TEST_ADMIN_PASSWORD, app)
+        return self.login_as(self.config['test.admin_user'],
+                             self.config['test.admin_password'], app)
 
     def login_as(self, username, password, app):
         login_url = self.url_for('login')
