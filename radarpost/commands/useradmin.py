@@ -1,5 +1,5 @@
 from couchdb import Server, ResourceNotFound
-from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
+from radarpost.cli import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
 from radarpost import plugins
 from radarpost.user import User, ROLE_ADMIN
 from getpass import getpass

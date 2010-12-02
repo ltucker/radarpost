@@ -5,7 +5,7 @@ import traceback
 from radarpost.agent import SUBSCRIPTION_UPDATE_HANDLER
 from radarpost.feed import *
 from radarpost.mailbox import *
-from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, InvalidArguments
+from radarpost.cli import COMMANDLINE_PLUGIN, BasicCommand, InvalidArguments
 from radarpost import plugins
 from time import sleep
 

@@ -1,8 +1,8 @@
 from operator import attrgetter
 import sys
 
-from radarpost.main import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
-from radarpost.main import find_command_type, print_basic_usage, print_unknown_command
+from radarpost.cli import COMMANDLINE_PLUGIN, BasicCommand, get_basic_option_parser
+from radarpost.cli import find_command_type, print_basic_usage, print_unknown_command
 from radarpost import plugins
 
 class HelpCommand(BasicCommand):

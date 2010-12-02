@@ -52,11 +52,11 @@ setup(
     test_suite='nose.collector',
     entry_points="""
     [console_scripts]
-    radarpost = radarpost.main:main
+    radarpost = radarpost.cli:main
     
     [radarpost_plugins]
     agents = radarpost.agent
-    commands = radarpost.cli
+    commands = radarpost.commands
     http = radarpost.http
     feed = radarpost.feed
     server = radarpost.web.app

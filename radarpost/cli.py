@@ -14,7 +14,7 @@ import traceback
 # This plugin id is used to expose commands available at the 
 # command line as 'radarpost <command>' 
 #
-COMMANDLINE_PLUGIN = 'radarpost.main.command'
+COMMANDLINE_PLUGIN = 'radarpost.cli.command'
 
 class InvalidArguments(Exception):
     pass
