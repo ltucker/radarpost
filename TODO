@@ -8,6 +8,7 @@ text for empty aggregations.
 
 ===
 
+trailing slash on urls
 detect / eliminate orphan items
 security testing
 database level validation / security
