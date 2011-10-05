@@ -37,8 +37,8 @@ If you get sick of saying -Csrc/radarpost/radar.ini, you can set the RADAR_CONFI
   $ radarpost help 
   ... hooray!
 
-Okay, now what?
-===============
+Okay, now what??
+================
 
 Now you can visit your site and login with the user you created above.  You should be able to create new aggregations and import feeds through the user interface.  
 
